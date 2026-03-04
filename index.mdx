@@ -82,13 +82,18 @@ mode: custom
       
       ```kotlin Kotlin
       val request = CheckoutRequest(
-          totalAmount = ItemAmount(value = 100.0),
+          totalAmount = TotalAmount(
+              value = BigDecimal("100.00"),
+              currency = "PHP"
+          ),
           buyer = null,
           items = listOf(
               Item(
                   name = "Test Item",
                   quantity = 1,
-                  amount = ItemAmount(value = 100.0)
+                  amount = ItemAmount(
+                      value = BigDecimal("100.00")
+                  )
               )
           ),
           requestReferenceNumber = "ORDER-${System.currentTimeMillis()}",
