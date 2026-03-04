@@ -1,0 +1,419 @@
+---
+title: 'Exceptions'
+description: 'Exception handling in PayMaya Android SDK v2'
+---
+
+## Overview
+
+The PayMaya Android SDK v2 provides specific exception types to help you handle errors gracefully. All exceptions are returned through the `Failure` result type in `onActivityResult`.
+
+## Exception Types
+
+### BadRequestException
+
+Thrown when the server returns a 400 (Bad Request) or 401 (Unauthorized) response code. This typically indicates invalid request parameters or authentication issues.
+
+#### Properties
+
+- `message: String` - Detail message of the exception
+- `error: BaseError` - Detailed error object containing additional information
+
+#### Error Types
+
+The `error` property can be one of two types:
+
+**PaymentError**
+```kotlin
+data class PaymentError(
+    val code: String,
+    val message: String,
+    val parameters: List<PaymentErrorParameter>? = null,
+    val details: PaymentErrorDetails? = null
+)
+```
+
+**GenericError**
+```kotlin
+data class GenericError(
+    val code: String,
+    val error: String,
+    val reference: String
+)
+```
+
+#### When It's Thrown
+
+- Invalid or missing required fields in the request
+- Authentication failure with invalid API keys
+- Malformed request data
+- Unauthorized access to resources
+
+#### Example Handling
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    if (requestCode == CHECKOUT_REQUEST_CODE) {
+        when (val result = payMayaCheckout.getResult(resultCode, data)) {
+            is PayMayaCheckoutResult.Failure -> {
+                when (val exception = result.exception) {
+                    is BadRequestException -> {
+                        Log.e(TAG, "Bad request: ${exception.message}")
+                        
+                        // Access detailed error information
+                        when (val error = exception.error) {
+                            is PaymentError -> {
+                                Log.e(TAG, "Error code: ${error.code}")
+                                Log.e(TAG, "Error message: ${error.message}")
+                                
+                                // Handle field-specific errors
+                                error.parameters?.forEach { param ->
+                                    Log.e(TAG, "Field: ${param.field}, Issue: ${param.description}")
+                                }
+                                
+                                // Handle payment error details
+                                error.details?.let { details ->
+                                    Log.e(TAG, "Response code: ${details.responseCode}")
+                                    Log.e(TAG, "Response description: ${details.responseDescription}")
+                                    Log.e(TAG, "Reference number: ${details.requestReferenceNumber}")
+                                }
+                            }
+                            is GenericError -> {
+                                Log.e(TAG, "Generic error code: ${error.code}")
+                                Log.e(TAG, "Error: ${error.error}")
+                                Log.e(TAG, "Reference: ${error.reference}")
+                            }
+                        }
+                        
+                        // Show user-friendly message
+                        Toast.makeText(this, "Invalid request. Please check your input.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### HttpException
+
+Thrown when an unknown HTTP exception occurs. This indicates an unexpected HTTP error response from the server.
+
+#### Properties
+
+- `code: Int` - HTTP response code
+- `message: String` - HTTP response message
+
+#### When It's Thrown
+
+- Server returns an unexpected HTTP status code (e.g., 500, 502, 503)
+- Network-related errors that return HTTP error codes
+- Service temporarily unavailable
+- Gateway timeout or other server errors
+
+#### Example Handling
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    if (requestCode == CHECKOUT_REQUEST_CODE) {
+        when (val result = payMayaCheckout.getResult(resultCode, data)) {
+            is PayMayaCheckoutResult.Failure -> {
+                when (val exception = result.exception) {
+                    is HttpException -> {
+                        Log.e(TAG, "HTTP error ${exception.code}: ${exception.message}")
+                        
+                        // Handle specific HTTP codes
+                        when (exception.code) {
+                            500, 502, 503 -> {
+                                Toast.makeText(
+                                    this,
+                                    "Server error. Please try again later.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            504 -> {
+                                Toast.makeText(
+                                    this,
+                                    "Request timeout. Please check your connection.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            else -> {
+                                Toast.makeText(
+                                    this,
+                                    "Unexpected error occurred: ${exception.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### InternalException
+
+Thrown when an unexpected response from the backend is retrieved or an internal SDK error occurs.
+
+#### Properties
+
+- `message: String` - Detail message describing the error
+- `cause: Throwable?` - Optional underlying cause of the exception
+
+#### When It's Thrown
+
+- Unexpected or malformed response from the PayMaya API
+- JSON parsing errors
+- Internal SDK processing errors
+- Unexpected data format in the response
+
+#### Example Handling
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    if (requestCode == CHECKOUT_REQUEST_CODE) {
+        when (val result = payMayaCheckout.getResult(resultCode, data)) {
+            is PayMayaCheckoutResult.Failure -> {
+                when (val exception = result.exception) {
+                    is InternalException -> {
+                        Log.e(TAG, "Internal error: ${exception.message}")
+                        
+                        // Log the underlying cause if available
+                        exception.cause?.let { cause ->
+                            Log.e(TAG, "Caused by: ${cause.message}", cause)
+                        }
+                        
+                        // Show user-friendly message
+                        Toast.makeText(
+                            this,
+                            "An unexpected error occurred. Please try again.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        
+                        // Consider reporting to your error tracking service
+                        // reportErrorToTracking(exception)
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### PaymentFailedException
+
+A singleton exception thrown when a payment transaction fails. This is a simple marker exception without additional properties.
+
+#### Properties
+
+None - this is an object (singleton) exception.
+
+#### When It's Thrown
+
+- Payment was declined by the payment provider
+- Insufficient funds
+- Card verification failed
+- Payment was explicitly rejected
+
+#### Example Handling
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    if (requestCode == CHECKOUT_REQUEST_CODE) {
+        when (val result = payMayaCheckout.getResult(resultCode, data)) {
+            is PayMayaCheckoutResult.Failure -> {
+                when (result.exception) {
+                    is PaymentFailedException -> {
+                        Log.e(TAG, "Payment failed")
+                        
+                        // Show user-friendly message
+                        Toast.makeText(
+                            this,
+                            "Payment failed. Please try again or use a different payment method.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        
+                        // Optionally, navigate back to payment selection
+                        // or offer alternative payment methods
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Complete Exception Handling Example
+
+Here's a comprehensive example that handles all exception types:
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    
+    private lateinit var payMayaCheckout: PayMayaCheckout
+    
+    companion object {
+        private const val TAG = "CheckoutActivity"
+        private const val CHECKOUT_REQUEST_CODE = 100
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == CHECKOUT_REQUEST_CODE) {
+            when (val result = payMayaCheckout.getResult(resultCode, data)) {
+                is PayMayaCheckoutResult.Success -> {
+                    Log.i(TAG, "Payment successful: ${result.checkoutId}")
+                    Toast.makeText(this, "Payment completed successfully!", Toast.LENGTH_SHORT).show()
+                    // Navigate to success screen
+                }
+                
+                is PayMayaCheckoutResult.Cancel -> {
+                    Log.i(TAG, "Payment cancelled by user")
+                    Toast.makeText(this, "Payment cancelled", Toast.LENGTH_SHORT).show()
+                    // Handle cancellation
+                }
+                
+                is PayMayaCheckoutResult.Failure -> {
+                    handlePaymentFailure(result)
+                }
+            }
+        }
+    }
+    
+    private fun handlePaymentFailure(result: PayMayaCheckoutResult.Failure) {
+        when (val exception = result.exception) {
+            is BadRequestException -> {
+                Log.e(TAG, "Bad request: ${exception.message}")
+                when (val error = exception.error) {
+                    is PaymentError -> {
+                        val errorMsg = buildString {
+                            append("Invalid request: ${error.message}\n")
+                            error.parameters?.forEach { param ->
+                                append("${param.field}: ${param.description}\n")
+                            }
+                        }
+                        showError(errorMsg)
+                    }
+                    is GenericError -> {
+                        showError("Request error: ${error.error}")
+                    }
+                }
+            }
+            
+            is HttpException -> {
+                Log.e(TAG, "HTTP error ${exception.code}: ${exception.message}")
+                when {
+                    exception.code >= 500 -> showError("Server error. Please try again later.")
+                    exception.code == 408 || exception.code == 504 -> {
+                        showError("Request timeout. Please check your connection.")
+                    }
+                    else -> showError("Network error occurred. Please try again.")
+                }
+            }
+            
+            is InternalException -> {
+                Log.e(TAG, "Internal error: ${exception.message}", exception)
+                showError("An unexpected error occurred. Please try again.")
+                // Report to error tracking service
+                reportError(exception)
+            }
+            
+            is PaymentFailedException -> {
+                Log.e(TAG, "Payment failed")
+                showError("Payment failed. Please try again or use a different payment method.")
+            }
+            
+            else -> {
+                Log.e(TAG, "Unknown error: ${exception.message}", exception)
+                showError("An error occurred. Please try again.")
+            }
+        }
+    }
+    
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        // Optionally show a dialog or update UI
+    }
+    
+    private fun reportError(exception: Exception) {
+        // Report to your error tracking service
+        // Example: Crashlytics.recordException(exception)
+    }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always handle all exception types">
+    Use a `when` expression with an `else` branch to handle unexpected exception types that may be added in future SDK versions.
+  </Accordion>
+  
+  <Accordion title="Log exceptions for debugging">
+    Always log exception details during development to help diagnose issues. Consider using different log levels for different exception types.
+  </Accordion>
+  
+  <Accordion title="Provide user-friendly messages">
+    Don't expose technical error messages to users. Translate exception types into clear, actionable messages.
+  </Accordion>
+  
+  <Accordion title="Implement retry logic for transient errors">
+    For `HttpException` with server errors (5xx codes), consider implementing automatic retry logic with exponential backoff.
+  </Accordion>
+  
+  <Accordion title="Report internal exceptions">
+    Use an error tracking service (like Crashlytics or Sentry) to monitor `InternalException` occurrences in production.
+  </Accordion>
+  
+  <Accordion title="Extract error details from BadRequestException">
+    The `BadRequestException` contains detailed error information. Use the `parameters` field to identify which fields need correction.
+  </Accordion>
+</AccordionGroup>
+
+## Error Models Reference
+
+### PaymentErrorParameter
+
+Contains information about field-specific validation errors.
+
+```kotlin
+data class PaymentErrorParameter(
+    val field: String? = null,        // Name of the field with the error
+    val description: String? = null   // Description of what's wrong
+)
+```
+
+### PaymentErrorDetails
+
+Contains detailed payment processing error information.
+
+```kotlin
+data class PaymentErrorDetails(
+    val responseCode: String? = null,              // Payment provider response code
+    val responseDescription: String? = null,       // Human-readable error description
+    val requestReferenceNumber: String? = null     // Reference for tracking
+)
+```
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Result Types" icon="check-circle" href="/api/models/results">
+    Learn about Success, Cancel, and Failure result types
+  </Card>
+  
+  <Card title="Error Handling" icon="shield-check" href="/guides/result-handling">
+    Best practices for error handling in your app
+  </Card>
+</CardGroup>

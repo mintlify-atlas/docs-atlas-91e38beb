@@ -1,0 +1,526 @@
+---
+title: Testing
+description: Complete guide to testing PayMaya SDK integration using sandbox environment
+---
+
+## Overview
+
+The PayMaya SDK provides a sandbox environment for comprehensive testing of all payment flows without processing real transactions. This guide covers testing strategies, test cards, and common scenarios.
+
+## Sandbox Environment Setup
+
+Before testing, ensure your client is configured for the sandbox environment:
+
+```kotlin
+val payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxxxxxxxxxxxxxxx") // Sandbox public key
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG) // Verbose logging for testing
+    .build()
+```
+
+<Warning>
+Sandbox transactions do not process real payments. Never use production keys in test environments.
+</Warning>
+
+## Test Credit Cards
+
+PayMaya provides test credit card numbers for different scenarios in the sandbox environment.
+
+<Note>
+For the complete list of test cards, visit the official [PayMaya Test Credit Cards](https://developers.paymaya.com/blog/entry/checkout-api-test-credit-card-account-numbers) documentation.
+</Note>
+
+### Successful Payment Cards
+
+Use these cards to test successful payment flows:
+
+<CardGroup cols={2}>
+  <Card title="Visa" icon="cc-visa">
+    **Card Number:** 4123450131001381  
+    **Expiry:** Any future date  
+    **CVV:** Any 3 digits  
+    **Result:** Payment success
+  </Card>
+  
+  <Card title="Mastercard" icon="cc-mastercard">
+    **Card Number:** 5123450000000008  
+    **Expiry:** Any future date  
+    **CVV:** Any 3 digits  
+    **Result:** Payment success
+  </Card>
+</CardGroup>
+
+### Failed Payment Cards
+
+Test payment failure scenarios:
+
+<Card title="Declined Card" icon="ban">
+  **Card Number:** 4571736000000075  
+  **Result:** Payment declined/failed
+</Card>
+
+### Test Card Details
+
+For all test cards, you can use:
+
+- **Expiry Date:** Any future date (e.g., 12/25, 01/26)
+- **CVV:** Any 3-digit number (e.g., 123, 456)
+- **Cardholder Name:** Any name
+
+<Info>
+Test cards only work in the sandbox environment. They will be rejected in production.
+</Info>
+
+## Testing Checkout Flow
+
+### Basic Checkout Test
+
+```kotlin
+fun testCheckoutPayment() {
+    // 1. Create checkout request
+    val request = CheckoutRequest(
+        totalAmount = TotalAmount(
+            value = BigDecimal("100.00"),
+            currency = "PHP"
+        ),
+        buyer = null, // Optional for testing
+        items = listOf(
+            Item(
+                name = "Test Product",
+                quantity = 1,
+                amount = TotalAmount(
+                    value = BigDecimal("100.00"),
+                    currency = "PHP"
+                )
+            )
+        ),
+        requestReferenceNumber = "TEST-${System.currentTimeMillis()}",
+        redirectUrl = RedirectUrl(
+            success = "http://success.test",
+            failure = "http://failure.test",
+            cancel = "http://cancel.test"
+        ),
+        metadata = null
+    )
+    
+    // 2. Start checkout
+    payMayaCheckoutClient.startCheckoutActivityForResult(this, request)
+}
+
+// 3. Handle result
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    payMayaCheckoutClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is PayMayaCheckoutResult.Success -> {
+                Log.d(TAG, "✓ Test passed: Successful payment")
+                Log.d(TAG, "Checkout ID: ${result.checkoutId}")
+            }
+            is PayMayaCheckoutResult.Cancel -> {
+                Log.d(TAG, "Test: Payment canceled")
+            }
+            is PayMayaCheckoutResult.Failure -> {
+                Log.e(TAG, "✗ Test failed: ${result.exception.message}")
+            }
+        }
+    }
+}
+```
+
+### Test Scenarios
+
+<AccordionGroup>
+  <Accordion title="Successful Payment">
+    1. Launch checkout with valid test card (4123450131001381)
+    2. Complete the payment flow
+    3. Verify `PayMayaCheckoutResult.Success` is received
+    4. Confirm `checkoutId` is present
+    5. Check payment status shows `PAYMENT_SUCCESS`
+  </Accordion>
+  
+  <Accordion title="Failed Payment">
+    1. Launch checkout with declined card (4571736000000075)
+    2. Complete the payment flow
+    3. Verify `PayMayaCheckoutResult.Failure` is received
+    4. Check exception details
+  </Accordion>
+  
+  <Accordion title="User Cancellation">
+    1. Launch checkout
+    2. Press back button or close the activity
+    3. Verify `PayMayaCheckoutResult.Cancel` is received
+  </Accordion>
+  
+  <Accordion title="Invalid Request">
+    1. Create checkout with invalid data (e.g., negative amount)
+    2. Attempt to start checkout
+    3. Verify `BadRequestException` is thrown or returned
+  </Accordion>
+</AccordionGroup>
+
+## Testing Pay With PayMaya
+
+### Single Payment Test
+
+```kotlin
+fun testSinglePayment() {
+    val request = SinglePaymentRequest(
+        totalAmount = TotalAmount(
+            value = BigDecimal("50.00"),
+            currency = "PHP"
+        ),
+        requestReferenceNumber = "PWPM-${System.currentTimeMillis()}",
+        redirectUrl = RedirectUrl(
+            success = "http://success.test",
+            failure = "http://failure.test",
+            cancel = "http://cancel.test"
+        ),
+        metadata = null
+    )
+    
+    payWithPayMayaClient.startSinglePaymentActivityForResult(this, request)
+}
+
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    PayWithPayMaya.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is SinglePaymentResult.Success -> {
+                Log.d(TAG, "✓ Single payment successful: ${result.paymentId}")
+            }
+            is SinglePaymentResult.Cancel -> {
+                Log.d(TAG, "Single payment canceled")
+            }
+            is SinglePaymentResult.Failure -> {
+                Log.e(TAG, "✗ Single payment failed: ${result.exception}")
+            }
+        }
+    }
+}
+```
+
+### Wallet Link Test
+
+```kotlin
+fun testWalletLink() {
+    val request = CreateWalletLinkRequest(
+        requestReferenceNumber = "LINK-${System.currentTimeMillis()}",
+        redirectUrl = RedirectUrl(
+            success = "http://success.test",
+            failure = "http://failure.test",
+            cancel = "http://cancel.test"
+        ),
+        metadata = null
+    )
+    
+    payWithPayMayaClient.startCreateWalletLinkActivityForResult(this, request)
+}
+
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    PayWithPayMaya.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is CreateWalletLinkResult.Success -> {
+                Log.d(TAG, "✓ Wallet link created: ${result.linkId}")
+            }
+            is CreateWalletLinkResult.Cancel -> {
+                Log.d(TAG, "Wallet link creation canceled")
+            }
+            is CreateWalletLinkResult.Failure -> {
+                Log.e(TAG, "✗ Wallet link failed: ${result.exception}")
+            }
+        }
+    }
+}
+```
+
+## Testing Vault (Card Tokenization)
+
+```kotlin
+fun testCardTokenization() {
+    payMayaVaultClient.startTokenizeCardActivityForResult(this)
+}
+
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    payMayaVaultClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is PayMayaVaultResult.Success -> {
+                Log.d(TAG, "✓ Card tokenized successfully")
+                Log.d(TAG, "Token ID: ${result.paymentTokenId}")
+                Log.d(TAG, "Issuer: ${result.issuer}")
+                Log.d(TAG, "State: ${result.state}")
+                Log.d(TAG, "Created: ${result.createdAt}")
+            }
+            is PayMayaVaultResult.Cancel -> {
+                Log.d(TAG, "Card tokenization canceled")
+            }
+        }
+    }
+}
+```
+
+### Vault Test Cases
+
+1. **Valid Card Entry**
+   - Enter test card details
+   - Verify successful tokenization
+   - Confirm token ID is returned
+
+2. **Invalid Card**
+   - Enter invalid card number
+   - Verify validation error is shown
+   - Confirm user can retry
+
+3. **Cancel Tokenization**
+   - Start tokenization flow
+   - Press back or cancel
+   - Verify `PayMayaVaultResult.Cancel` is received
+
+## Testing Payment Status
+
+```kotlin
+fun testPaymentStatusCheck(checkoutId: String) {
+    lifecycleScope.launch(Dispatchers.IO) {
+        val result = payMayaCheckoutClient.checkPaymentStatus(checkoutId)
+        
+        withContext(Dispatchers.Main) {
+            when (result) {
+                is CheckPaymentStatusResult.Success -> {
+                    Log.d(TAG, "✓ Status check successful: ${result.status}")
+                    verifyExpectedStatus(result.status)
+                }
+                is CheckPaymentStatusResult.Failure -> {
+                    Log.e(TAG, "✗ Status check failed: ${result.exception}")
+                }
+                else -> {
+                    Log.d(TAG, "Status check canceled")
+                }
+            }
+        }
+    }
+}
+
+private fun verifyExpectedStatus(actual: PaymentStatus) {
+    // Verify status matches expected value
+    val expected = PaymentStatus.PAYMENT_SUCCESS
+    if (actual == expected) {
+        Log.d(TAG, "✓ Status matches expected: $expected")
+    } else {
+        Log.e(TAG, "✗ Status mismatch. Expected: $expected, Got: $actual")
+    }
+}
+```
+
+## Exception Handling Tests
+
+```kotlin
+class PaymentExceptionTests {
+    
+    @Test
+    fun testBadRequestException() {
+        // Test with invalid API key
+        val client = PayMayaCheckout.newBuilder()
+            .clientPublicKey("invalid-key")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .build()
+        
+        // Attempt checkout - should fail with BadRequestException
+        // Verify exception is caught and handled properly
+    }
+    
+    @Test
+    fun testNetworkFailure() {
+        // Disable network
+        // Attempt payment
+        // Verify appropriate exception handling
+    }
+    
+    @Test
+    fun testInvalidAmount() {
+        // Create request with invalid amount
+        // Verify validation or exception
+    }
+}
+```
+
+## Common Testing Scenarios
+
+<CardGroup cols={2}>
+  <Card title="Happy Path" icon="check">
+    Test successful payment flow with valid test cards from start to finish.
+  </Card>
+  
+  <Card title="Network Issues" icon="wifi">
+    Test behavior during network interruptions or timeouts.
+  </Card>
+  
+  <Card title="User Cancellation" icon="xmark">
+    Verify proper handling when users cancel at different stages.
+  </Card>
+  
+  <Card title="Invalid Input" icon="triangle-exclamation">
+    Test with invalid data to ensure proper validation and error messages.
+  </Card>
+  
+  <Card title="Back Button" icon="arrow-left">
+    Test pressing back button during payment flow.
+  </Card>
+  
+  <Card title="App Backgrounding" icon="mobile">
+    Test behavior when app goes to background during payment.
+  </Card>
+  
+  <Card title="Multiple Requests" icon="clone">
+    Test handling of rapid successive payment requests.
+  </Card>
+  
+  <Card title="Status Polling" icon="rotate">
+    Test status checking for various payment states.
+  </Card>
+</CardGroup>
+
+## Automated Testing Example
+
+```kotlin
+class PayMayaCheckoutTest {
+    private lateinit var client: PayMayaCheckout
+    
+    @Before
+    fun setup() {
+        client = PayMayaCheckout.newBuilder()
+            .clientPublicKey("pk-test-xxxxxxxxxxxxxxxx")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .logLevel(LogLevel.DEBUG)
+            .build()
+    }
+    
+    @Test
+    fun testSuccessfulCheckout() {
+        val request = createTestCheckoutRequest()
+        
+        // Use ActivityScenario or Espresso to test UI flow
+        val scenario = launchActivity<CheckoutActivity>()
+        
+        // Perform checkout
+        // Enter test card details
+        // Verify success result
+        
+        scenario.onActivity { activity ->
+            val result = /* get result from activity */
+            assertTrue(result is PayMayaCheckoutResult.Success)
+        }
+    }
+    
+    @Test
+    fun testCheckoutCancellation() {
+        // Test cancellation flow
+    }
+    
+    @Test
+    fun testInvalidRequest() {
+        // Test with invalid data
+    }
+    
+    private fun createTestCheckoutRequest(): CheckoutRequest {
+        return CheckoutRequest(
+            totalAmount = TotalAmount(BigDecimal("100.00"), "PHP"),
+            items = listOf(
+                Item("Test Item", 1, TotalAmount(BigDecimal("100.00"), "PHP"))
+            ),
+            requestReferenceNumber = "TEST-${System.currentTimeMillis()}",
+            redirectUrl = RedirectUrl(
+                success = "http://success.test",
+                failure = "http://failure.test",
+                cancel = "http://cancel.test"
+            )
+        )
+    }
+}
+```
+
+## Testing Checklist
+
+Before going to production, ensure you've tested:
+
+- [ ] Successful payment with test cards
+- [ ] Failed payment scenarios
+- [ ] User cancellation at various stages
+- [ ] Payment status checking
+- [ ] Exception handling for all error types
+- [ ] Network failure scenarios
+- [ ] Invalid input validation
+- [ ] Multiple payment flows (Checkout, Pay With PayMaya, Vault)
+- [ ] Back button behavior
+- [ ] App backgrounding during payment
+- [ ] Status polling for pending payments
+- [ ] Result handling in onActivityResult
+- [ ] Logging output in debug mode
+
+## Debugging Tips
+
+<Accordion title="Enable Verbose Logging">
+  Set `LogLevel.VERBOSE` to see complete HTTP request and response details:
+  
+  ```kotlin
+  .logLevel(LogLevel.VERBOSE)
+  ```
+</Accordion>
+
+<Accordion title="Check Logcat Output">
+  Filter logcat by PayMaya tag:
+  
+  ```bash
+  adb logcat | grep -i paymaya
+  ```
+</Accordion>
+
+<Accordion title="Verify API Keys">
+  Ensure you're using sandbox keys (prefix: `pk-test-`) in test environment.
+</Accordion>
+
+<Accordion title="Test Network Conditions">
+  Use Android Studio's Network Profiler or device developer options to simulate poor network conditions.
+</Accordion>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Separate Test Keys" icon="key">
+    Use dedicated test keys for development separate from shared sandbox keys.
+  </Card>
+  
+  <Card title="Test All Paths" icon="code-branch">
+    Test success, failure, and cancellation paths for complete coverage.
+  </Card>
+  
+  <Card title="Automated Tests" icon="robot">
+    Create automated tests for regression testing during development.
+  </Card>
+  
+  <Card title="Log Everything" icon="file-lines">
+    Use verbose logging during testing to understand SDK behavior.
+  </Card>
+  
+  <Card title="Edge Cases" icon="dice">
+    Test edge cases like rapid clicks, back button, and app lifecycle events.
+  </Card>
+  
+  <Card title="Document Results" icon="clipboard">
+    Keep track of test results and any issues discovered.
+  </Card>
+</CardGroup>
+
+## Resources
+
+- [PayMaya Test Cards Documentation](https://developers.paymaya.com/blog/entry/checkout-api-test-credit-card-account-numbers)
+- [PayMaya Developer Dashboard](https://developers.paymaya.com/)
+- [Sandbox Environment Guidelines](https://developers.paymaya.com/)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/guides/environment-setup">
+    Configure production environment after testing
+  </Card>
+  <Card title="Result Handling" icon="code" href="/guides/result-handling">
+    Handle payment results in your app
+  </Card>
+</CardGroup>

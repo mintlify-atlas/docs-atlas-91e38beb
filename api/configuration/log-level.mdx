@@ -1,0 +1,134 @@
+---
+title: LogLevel
+description: Logging level configuration enum for the PayMaya Android SDK
+---
+
+## Overview
+
+The `LogLevel` enum controls the verbosity of SDK logging, particularly for HTTP requests and responses. This is useful for debugging integration issues during development.
+
+## Definition
+
+```kotlin
+enum class LogLevel {
+    VERBOSE,  // Includes HTTP request/response lines, headers and bodies
+    DEBUG,    // Includes HTTP request/response lines and headers
+    INFO,     // Includes HTTP request/response lines
+    WARN,
+    ERROR,
+    ASSERT
+}
+```
+
+## Values
+
+### VERBOSE
+
+Most detailed logging level. Includes complete HTTP information.
+
+**Includes:**
+- HTTP request and response lines
+- Headers
+- Request and response bodies
+
+**Use for:**
+- Detailed debugging of API interactions
+- Inspecting exact request/response payloads
+- Troubleshooting integration issues
+
+### DEBUG
+
+Moderate logging level. Excludes request/response bodies.
+
+**Includes:**
+- HTTP request and response lines
+- Headers
+
+**Use for:**
+- General debugging without exposing full payloads
+- Monitoring API endpoints being called
+- Checking request headers
+
+### INFO
+
+Basic logging level. Shows only request/response lines.
+
+**Includes:**
+- HTTP request and response lines
+
+**Use for:**
+- Basic monitoring of API calls
+- Minimal logging overhead
+- Production environments with limited logging
+
+### WARN
+
+Logs warning messages only.
+
+**Use for:**
+- Highlighting potential issues
+- Production environments
+
+### ERROR
+
+Logs error messages only.
+
+**Use for:**
+- Capturing failures and exceptions
+- Production monitoring
+- Minimal logging output
+
+### ASSERT
+
+Logs assertion failures.
+
+**Use for:**
+- Critical failures only
+- Minimal logging
+
+<Warning>
+Avoid using `VERBOSE` or `DEBUG` levels in production as they may expose sensitive payment information in logs. Use `INFO`, `WARN`, or `ERROR` for production apps.
+</Warning>
+
+## Usage Example
+
+```kotlin
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+```
+
+## Recommendations
+
+<AccordionGroup>
+  <Accordion title="Development">
+    Use `VERBOSE` or `DEBUG` to see detailed HTTP traffic and debug integration issues.
+    
+    ```kotlin
+    .logLevel(LogLevel.DEBUG)
+    ```
+  </Accordion>
+
+  <Accordion title="Testing/QA">
+    Use `INFO` to monitor API calls without exposing full payloads.
+    
+    ```kotlin
+    .logLevel(LogLevel.INFO)
+    ```
+  </Accordion>
+
+  <Accordion title="Production">
+    Use `ERROR` or `WARN` to minimize logging and avoid exposing sensitive data.
+    
+    ```kotlin
+    .logLevel(LogLevel.ERROR)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## See Also
+
+- [Builder](/api/configuration/builder) - Configure SDK clients
+- [PayMayaEnvironment](/api/configuration/environment) - Environment configuration

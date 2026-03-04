@@ -1,0 +1,262 @@
+---
+title: "PayMayaVault"
+description: "Payment Vault client for tokenizing credit and debit cards"
+---
+
+## Interface
+
+```kotlin
+interface PayMayaVault
+```
+
+The PayMaya Payment Vault client for tokenizing credit and debit cards. Card tokens can be used for payments and customer card addition.
+
+## Creating an Instance
+
+### newBuilder()
+
+Returns a new `PayMayaVault.Builder` instance for constructing the client.
+
+```kotlin
+val vaultClient = PayMayaVault.newBuilder()
+    .clientPublicKey("your-public-key")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.INFO)
+    .logo(R.drawable.your_logo)
+    .build()
+```
+
+## Methods
+
+### startTokenizeCardActivityForResult()
+
+Initiates the tokenize card flow. Allows creation of a payment token that represents your customer's credit or debit card details.
+
+```kotlin
+fun startTokenizeCardActivityForResult(activity: Activity)
+```
+
+<ParamField path="activity" type="Activity" required>
+  The current activity from which to launch the card tokenization flow
+</ParamField>
+
+**Usage:**
+
+```kotlin
+vaultClient.startTokenizeCardActivityForResult(this)
+```
+
+<Note>
+  The payment token is valid for a specific amount of time. Before it expires, it is valid for single use only in payment transactions.
+</Note>
+
+<Note>
+  Use `onActivityResult()` to get the tokenization result after the flow completes.
+</Note>
+
+### onActivityResult()
+
+Gets the tokenization result. Call this from your Activity's `onActivityResult()` method.
+
+```kotlin
+fun onActivityResult(
+    requestCode: Int,
+    resultCode: Int,
+    data: Intent?
+): PayMayaVaultResult?
+```
+
+<ParamField path="requestCode" type="Int" required>
+  The request code from the activity result
+</ParamField>
+
+<ParamField path="resultCode" type="Int" required>
+  The result code from the activity result
+</ParamField>
+
+<ParamField path="data" type="Intent?" required>
+  The intent data from the activity result
+</ParamField>
+
+**Returns:** `PayMayaVaultResult?` - Returns non-null result if the completed activity was started by `startTokenizeCardActivityForResult()`
+
+**Usage:**
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    vaultClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is PayMayaVaultResult.Success -> {
+                val token = result.paymentToken
+                val cardDetails = result.cardDetails
+                Log.d(TAG, "Card tokenized: $token")
+                // Use the token for payments
+            }
+            is PayMayaVaultResult.Failure -> {
+                val message = result.message
+                Log.e(TAG, "Tokenization failed: $message")
+            }
+            is PayMayaVaultResult.Cancel -> {
+                Log.d(TAG, "Tokenization cancelled")
+            }
+        }
+    }
+}
+```
+
+## Builder Methods
+
+### clientPublicKey()
+
+Sets the client public key. **Required.**
+
+```kotlin
+fun clientPublicKey(value: String): Builder
+```
+
+<ParamField path="value" type="String" required>
+  Your PayMaya public API key
+</ParamField>
+
+### environment()
+
+Sets the environment type (sandbox or production). **Required.**
+
+```kotlin
+fun environment(value: PayMayaEnvironment): Builder
+```
+
+<ParamField path="value" type="PayMayaEnvironment" required>
+  The environment to use: `PayMayaEnvironment.SANDBOX` or `PayMayaEnvironment.PRODUCTION`
+</ParamField>
+
+### logLevel()
+
+Sets the log level. Optional.
+
+```kotlin
+fun logLevel(value: LogLevel): Builder
+```
+
+<ParamField path="value" type="LogLevel">
+  The logging level: `LogLevel.NONE`, `LogLevel.ERROR`, `LogLevel.INFO`, or `LogLevel.DEBUG`
+</ParamField>
+
+### logo()
+
+Sets a custom logo for the card tokenization screen. Optional.
+
+```kotlin
+fun logo(@DrawableRes value: Int): Builder
+```
+
+<ParamField path="value" type="Int">
+  Drawable resource ID for your custom logo (e.g., `R.drawable.my_logo`)
+</ParamField>
+
+<Note>
+  Styles can also be used to customize the logo and other UI elements. See the theming guide for more information.
+</Note>
+
+### build()
+
+Builds and returns the `PayMayaVault` client instance.
+
+```kotlin
+fun build(): PayMayaVault
+```
+
+**Returns:** `PayMayaVault` - The configured vault client instance
+
+## Complete Example
+
+```kotlin
+class CardTokenizationActivity : AppCompatActivity() {
+    
+    private lateinit var vaultClient: PayMayaVault
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_card_tokenization)
+        
+        // Initialize the vault client
+        vaultClient = PayMayaVault.newBuilder()
+            .clientPublicKey("pk-test-12345")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .logLevel(LogLevel.INFO)
+            .logo(R.drawable.company_logo)
+            .build()
+        
+        // Start tokenization when button is clicked
+        findViewById<Button>(R.id.addCardButton).setOnClickListener {
+            startCardTokenization()
+        }
+    }
+    
+    private fun startCardTokenization() {
+        vaultClient.startTokenizeCardActivityForResult(this)
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        vaultClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+            when (result) {
+                is PayMayaVaultResult.Success -> {
+                    val token = result.paymentToken
+                    val cardDetails = result.cardDetails
+                    
+                    Toast.makeText(this, "Card tokenized successfully!", Toast.LENGTH_LONG).show()
+                    
+                    // Send token to your server for payment processing
+                    // The token is valid for single use only
+                    sendTokenToServer(token, cardDetails)
+                }
+                is PayMayaVaultResult.Failure -> {
+                    Toast.makeText(this, "Tokenization failed: ${result.message}", Toast.LENGTH_LONG).show()
+                }
+                is PayMayaVaultResult.Cancel -> {
+                    Toast.makeText(this, "Tokenization cancelled", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun sendTokenToServer(token: String, cardDetails: CardDetails) {
+        // Implement your server communication here
+        // Use the token to process a payment on your backend
+    }
+}
+```
+
+## Using Tokens for Payments
+
+Once you have a card token, you can use it on your backend to process payments:
+
+```kotlin
+// Frontend - get the token
+vaultClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+    when (result) {
+        is PayMayaVaultResult.Success -> {
+            val token = result.paymentToken
+            // Send this token to your backend
+            processPaymentOnServer(token, amount = 100.00)
+        }
+    }
+}
+```
+
+<Warning>
+  Card tokens are single-use only and expire after a specific time period. Always verify the payment on your backend and handle token expiration gracefully.
+</Warning>
+
+## Security Best Practices
+
+- Never store raw card details on your device or server
+- Always use tokens for payment processing
+- Implement proper SSL/TLS for communication with your backend
+- Validate tokens on your backend before processing payments
+- Handle token expiration and prompt users to re-tokenize if needed
+- Use production keys only in production builds

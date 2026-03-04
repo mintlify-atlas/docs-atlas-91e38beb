@@ -1,0 +1,259 @@
+---
+title: Result Classes
+description: Result types returned by SDK payment operations
+---
+
+The PayMaya Android SDK uses sealed classes to represent the results of various payment operations. Each operation returns a specific result type that indicates success, cancellation, or failure.
+
+## PayMayaCheckoutResult
+
+Sealed class representing the result of a checkout payment operation.
+
+### PayMayaCheckoutResult.Success
+
+Returned when the checkout payment completes successfully.
+
+<ParamField path="checkoutId" type="String" required>
+  Checkout identifier for the successful transaction.
+</ParamField>
+
+### PayMayaCheckoutResult.Cancel
+
+Returned when the user cancels the checkout payment.
+
+<ParamField path="checkoutId" type="String?">
+  Checkout identifier if available, or null if the cancellation occurred before a checkout ID was generated.
+</ParamField>
+
+### PayMayaCheckoutResult.Failure
+
+Returned when the checkout payment fails.
+
+<ParamField path="checkoutId" type="String?">
+  Checkout identifier if available, or null if the failure occurred before a checkout ID was generated.
+</ParamField>
+
+<ParamField path="exception" type="Exception" required>
+  Exception containing detailed information about the failure reason.
+</ParamField>
+
+## SinglePaymentResult
+
+Sealed class representing the result of a single payment operation via PayWithPayMaya.
+
+### SinglePaymentResult.Success
+
+Returned when the single payment completes successfully.
+
+<ParamField path="paymentId" type="String" required>
+  Payment identifier for the successful transaction.
+</ParamField>
+
+### SinglePaymentResult.Cancel
+
+Returned when the user cancels the single payment.
+
+<ParamField path="paymentId" type="String?">
+  Payment identifier if available, or null if the cancellation occurred before a payment ID was generated.
+</ParamField>
+
+### SinglePaymentResult.Failure
+
+Returned when the single payment fails.
+
+<ParamField path="paymentId" type="String?">
+  Payment identifier if available, or null if the failure occurred before a payment ID was generated.
+</ParamField>
+
+<ParamField path="exception" type="Exception" required>
+  Exception containing detailed information about the failure reason.
+</ParamField>
+
+## CreateWalletLinkResult
+
+Sealed class representing the result of creating a wallet link.
+
+### CreateWalletLinkResult.Success
+
+Returned when the wallet link is created successfully.
+
+<ParamField path="linkId" type="String" required>
+  Wallet link identifier for the successfully created link.
+</ParamField>
+
+### CreateWalletLinkResult.Cancel
+
+Returned when the user cancels the wallet link creation.
+
+<ParamField path="linkId" type="String?">
+  Wallet link identifier if available, or null if the cancellation occurred before a link ID was generated.
+</ParamField>
+
+### CreateWalletLinkResult.Failure
+
+Returned when the wallet link creation fails.
+
+<ParamField path="linkId" type="String?">
+  Wallet link identifier if available, or null if the failure occurred before a link ID was generated.
+</ParamField>
+
+<ParamField path="exception" type="Exception" required>
+  Exception containing detailed information about the failure reason.
+</ParamField>
+
+## PayMayaVaultResult
+
+Sealed class representing the result of a card tokenization process.
+
+### PayMayaVaultResult.Success
+
+Returned when card tokenization completes successfully.
+
+<ParamField path="paymentTokenId" type="String" required>
+  The unique identifier for the payment token.
+</ParamField>
+
+<ParamField path="state" type="String" required>
+  The state of the payment token.
+</ParamField>
+
+<ParamField path="createdAt" type="String" required>
+  Timestamp when the token was created.
+</ParamField>
+
+<ParamField path="updatedAt" type="String" required>
+  Timestamp when the token was last updated.
+</ParamField>
+
+<ParamField path="issuer" type="String" required>
+  The card issuer (e.g., "VISA", "MASTERCARD").
+</ParamField>
+
+### PayMayaVaultResult.Cancel
+
+Returned when the user cancels the card tokenization process. This is an object with no additional properties.
+
+## CheckPaymentStatusResult
+
+Sealed class representing the result of checking a payment's status.
+
+### CheckPaymentStatusResult.Success
+
+Returned when the payment status check succeeds.
+
+<ParamField path="status" type="PaymentStatus" required>
+  The current status of the payment. See [PaymentStatus](#paymentstatus) for possible values.
+</ParamField>
+
+### CheckPaymentStatusResult.Cancel
+
+Returned when the payment status check is cancelled. This is an object with no additional properties.
+
+### CheckPaymentStatusResult.Failure
+
+Returned when the payment status check fails.
+
+<ParamField path="exception" type="Exception" required>
+  Exception containing detailed information about the failure reason.
+</ParamField>
+
+## PaymentStatus
+
+Enum representing the various states a payment can be in.
+
+| Status | Description |
+|--------|-------------|
+| `PENDING_TOKEN` | Token is pending |
+| `PENDING_PAYMENT` | Initial payment status of the checkout transaction |
+| `PAYMENT_EXPIRED` | Payment transaction not executed and expiration time has been reached |
+| `FOR_AUTHENTICATION` | Payment transaction is waiting for authentication |
+| `AUTHENTICATING` | Payment transaction is currently authenticating |
+| `AUTH_SUCCESS` | Authentication successfully executed (e.g., 3DS authentication for card transactions) |
+| `AUTH_FAILED` | Authentication of payment has failed |
+| `PAYMENT_PROCESSING` | Payment is processing |
+| `PAYMENT_SUCCESS` | Payment is successfully processed |
+| `PAYMENT_FAILED` | Payment is not successfully processed |
+| `VOIDED` | Successfully processed payment has been reversed (usually before settlement cut-off for card-based payments) |
+| `REFUNDED` | Successfully processed payment has been fully or partially reversed (usually after settlement cut-off for card-based payments) |
+
+## Example Usage
+
+```kotlin
+// Checkout payment
+val checkoutResult = payMayaCheckout.startCheckout(checkoutRequest)
+when (checkoutResult) {
+    is PayMayaCheckoutResult.Success -> {
+        Log.d(TAG, "Checkout successful: ${checkoutResult.checkoutId}")
+    }
+    is PayMayaCheckoutResult.Cancel -> {
+        Log.d(TAG, "Checkout cancelled")
+    }
+    is PayMayaCheckoutResult.Failure -> {
+        Log.e(TAG, "Checkout failed", checkoutResult.exception)
+    }
+}
+
+// Single payment
+val paymentResult = payWithPayMaya.startSinglePayment(paymentRequest)
+when (paymentResult) {
+    is SinglePaymentResult.Success -> {
+        Log.d(TAG, "Payment successful: ${paymentResult.paymentId}")
+    }
+    is SinglePaymentResult.Cancel -> {
+        Log.d(TAG, "Payment cancelled")
+    }
+    is SinglePaymentResult.Failure -> {
+        Log.e(TAG, "Payment failed", paymentResult.exception)
+    }
+}
+
+// Wallet link creation
+val linkResult = payWithPayMaya.createWalletLink(walletLinkRequest)
+when (linkResult) {
+    is CreateWalletLinkResult.Success -> {
+        Log.d(TAG, "Wallet link created: ${linkResult.linkId}")
+    }
+    is CreateWalletLinkResult.Cancel -> {
+        Log.d(TAG, "Wallet link creation cancelled")
+    }
+    is CreateWalletLinkResult.Failure -> {
+        Log.e(TAG, "Wallet link creation failed", linkResult.exception)
+    }
+}
+
+// Card tokenization
+val vaultResult = payMayaVault.tokenizeCard()
+when (vaultResult) {
+    is PayMayaVaultResult.Success -> {
+        Log.d(TAG, "Tokenization successful: ${vaultResult.paymentTokenId}")
+        Log.d(TAG, "Issuer: ${vaultResult.issuer}")
+    }
+    is PayMayaVaultResult.Cancel -> {
+        Log.d(TAG, "Tokenization cancelled")
+    }
+}
+
+// Check payment status
+val statusResult = payMayaCheckout.checkPaymentStatus(checkoutId)
+when (statusResult) {
+    is CheckPaymentStatusResult.Success -> {
+        when (statusResult.status) {
+            PaymentStatus.PAYMENT_SUCCESS -> {
+                Log.d(TAG, "Payment was successful")
+            }
+            PaymentStatus.PAYMENT_FAILED -> {
+                Log.d(TAG, "Payment failed")
+            }
+            else -> {
+                Log.d(TAG, "Payment status: ${statusResult.status}")
+            }
+        }
+    }
+    is CheckPaymentStatusResult.Cancel -> {
+        Log.d(TAG, "Status check cancelled")
+    }
+    is CheckPaymentStatusResult.Failure -> {
+        Log.e(TAG, "Status check failed", statusResult.exception)
+    }
+}
+```

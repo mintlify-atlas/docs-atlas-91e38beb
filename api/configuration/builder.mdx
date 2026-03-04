@@ -1,0 +1,188 @@
+---
+title: Builder
+description: Builder interface pattern for configuring PayMaya SDK clients
+---
+
+## Overview
+
+All PayMaya SDK clients (`PayMayaCheckout`, `PayWithPayMaya`, and `PayMayaVault`) use a builder pattern for configuration. The builder provides a fluent API to set required and optional parameters before creating the client instance.
+
+## Builder Interface
+
+Each client provides a `Builder` interface accessible via `newBuilder()`:
+
+```kotlin
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+```
+
+## Common Methods
+
+These methods are available on all client builders:
+
+### clientPublicKey()
+
+<ParamField path="value" type="String" required>
+  Your PayMaya public API key
+</ParamField>
+
+Sets the client public key for authentication.
+
+```kotlin
+.clientPublicKey("pk-test-xxx")
+```
+
+<Warning>
+Use sandbox keys (starting with `pk-test-`) for `SANDBOX` environment and production keys for `PRODUCTION` environment. Never commit production keys to version control.
+</Warning>
+
+### environment()
+
+<ParamField path="value" type="PayMayaEnvironment" required>
+  The target environment (`SANDBOX` or `PRODUCTION`)
+</ParamField>
+
+Sets the environment type.
+
+```kotlin
+.environment(PayMayaEnvironment.SANDBOX)
+```
+
+See [PayMayaEnvironment](/api/configuration/environment) for details.
+
+### logLevel()
+
+<ParamField path="value" type="LogLevel">
+  The logging verbosity level
+</ParamField>
+
+Sets the log level for SDK operations. Optional.
+
+```kotlin
+.logLevel(LogLevel.DEBUG)
+```
+
+See [LogLevel](/api/configuration/log-level) for available levels.
+
+### build()
+
+Builds and returns the configured client instance.
+
+```kotlin
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .build()
+```
+
+<Note>
+The `build()` method will throw an exception if required parameters (`clientPublicKey` and `environment`) are not set.
+</Note>
+
+## Vault-Specific Methods
+
+`PayMayaVault.Builder` includes an additional method:
+
+### logo()
+
+<ParamField path="value" type="Int">
+  Drawable resource ID for custom logo
+</ParamField>
+
+Sets a custom logo for the Vault UI. Optional.
+
+```kotlin
+val vaultClient = PayMayaVault.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logo(R.drawable.custom_logo)
+    .build()
+```
+
+<Tip>
+You can also customize the logo and other UI elements using Android styles and themes.
+</Tip>
+
+## Complete Examples
+
+<CodeGroup>
+
+```kotlin PayMayaCheckout
+val checkoutClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+```
+
+```kotlin PayWithPayMaya
+val pwpClient = PayWithPayMaya.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.INFO)
+    .build()
+```
+
+```kotlin PayMayaVault
+val vaultClient = PayMayaVault.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .logo(R.drawable.my_logo)
+    .build()
+```
+
+</CodeGroup>
+
+## Builder Pattern Benefits
+
+- **Fluent API**: Chain configuration methods for readable code
+- **Type Safety**: Compile-time validation of parameter types
+- **Immutability**: Built clients are immutable once created
+- **Required Parameters**: Build fails if required config is missing
+- **Optional Parameters**: Sensible defaults for optional settings
+
+## Best Practices
+
+1. **Store Client Instance**: Create the client once and reuse it throughout your app
+
+```kotlin
+class PaymentManager {
+    private val checkoutClient = PayMayaCheckout.newBuilder()
+        .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+        .environment(PayMayaEnvironment.SANDBOX)
+        .build()
+}
+```
+
+2. **Use BuildConfig**: Store API keys in `build.gradle` and reference via `BuildConfig`
+
+```kotlin
+.clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+```
+
+3. **Environment-Specific Keys**: Use different keys for debug/release builds
+
+```kotlin
+val environment = if (BuildConfig.DEBUG) {
+    PayMayaEnvironment.SANDBOX
+} else {
+    PayMayaEnvironment.PRODUCTION
+}
+
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+    .environment(environment)
+    .build()
+```
+
+## See Also
+
+- [PayMayaCheckout](/api/paymaya-checkout) - Checkout client
+- [PayWithPayMaya](/api/pay-with-paymaya) - PayWithPayMaya client
+- [PayMayaVault](/api/paymaya-vault) - Vault client
+- [PayMayaEnvironment](/api/configuration/environment) - Environment configuration
+- [LogLevel](/api/configuration/log-level) - Logging configuration

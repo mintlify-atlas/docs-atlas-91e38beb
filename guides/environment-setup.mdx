@@ -1,0 +1,228 @@
+---
+title: Environment Setup
+description: Configure your PayMaya SDK environment for development and production
+---
+
+## Overview
+
+The PayMaya Android SDK supports two environments: Sandbox for testing and Production for live transactions. Proper environment configuration is essential for secure and reliable payment processing.
+
+## Environment Types
+
+The SDK provides two environment options through the `PayMayaEnvironment` enum:
+
+```kotlin PayMayaEnvironment.kt
+enum class PayMayaEnvironment {
+    SANDBOX,
+    PRODUCTION
+}
+```
+
+### Sandbox Environment
+
+Use `PayMayaEnvironment.SANDBOX` for:
+
+- Development and testing
+- Integration testing with test credit cards
+- QA and staging environments
+- Demo applications
+
+```kotlin
+val payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxxxxxxxxxxxxxxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+```
+
+<Warning>
+Never use sandbox API keys in production builds. Always use environment-specific configuration.
+</Warning>
+
+### Production Environment
+
+Use `PayMayaEnvironment.PRODUCTION` for:
+
+- Live production applications
+- Real customer transactions
+- Processing actual payments
+
+```kotlin
+val payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-live-xxxxxxxxxxxxxxxx")
+    .environment(PayMayaEnvironment.PRODUCTION)
+    .logLevel(LogLevel.ERROR)
+    .build()
+```
+
+<Warning>
+Always use `LogLevel.ERROR` or `LogLevel.WARN` in production to avoid logging sensitive data.
+</Warning>
+
+## Client Public Keys
+
+Each environment requires its own public API key:
+
+<AccordionGroup>
+  <Accordion title="Sandbox Keys">
+    - Prefix: `pk-test-`
+    - Used for: Testing and development
+    - Obtain from: [PayMaya Developer Dashboard](https://developers.paymaya.com/)
+  </Accordion>
+  
+  <Accordion title="Production Keys">
+    - Prefix: `pk-live-`
+    - Used for: Live transactions
+    - Obtain from: PayMaya Business Account
+    - Requires verification and approval
+  </Accordion>
+</AccordionGroup>
+
+### Best Practices for API Keys
+
+<CardGroup cols={2}>
+  <Card title="Use Build Variants" icon="layer-group">
+    Store different keys for debug and release builds using BuildConfig or gradle.properties
+  </Card>
+  <Card title="Secure Storage" icon="lock">
+    Never commit API keys to version control. Use environment variables or secure key storage
+  </Card>
+  <Card title="Key Rotation" icon="rotate">
+    Regularly rotate your production keys and update your applications
+  </Card>
+  <Card title="Separate Keys" icon="split">
+    Use different keys for different applications or services
+  </Card>
+</CardGroup>
+
+## Log Levels
+
+Configure logging verbosity using the `LogLevel` enum to control SDK output:
+
+```kotlin LogLevel.kt
+enum class LogLevel {
+    // Includes Http request and response lines, headers and bodies
+    VERBOSE,
+    // Includes Http request and response lines and headers
+    DEBUG,
+    // Includes Http request and response lines
+    INFO,
+    WARN,
+    ERROR,
+    ASSERT
+}
+```
+
+### Log Level Recommendations
+
+| Environment | Recommended Level | Purpose |
+|------------|------------------|----------|
+| Development | `DEBUG` or `VERBOSE` | Full visibility of HTTP requests and responses |
+| QA/Testing | `INFO` or `DEBUG` | Moderate logging for debugging |
+| Production | `ERROR` or `WARN` | Minimal logging, errors only |
+
+### Examples by Payment Type
+
+<CodeGroup>
+
+```kotlin Checkout
+val payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+```
+
+```kotlin Pay With PayMaya
+val payWithPayMayaClient = PayWithPayMaya.newBuilder()
+    .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.INFO)
+    .build()
+```
+
+```kotlin Vault
+val payMayaVaultClient = PayMayaVault.newBuilder()
+    .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+    .environment(PayMayaEnvironment.PRODUCTION)
+    .logLevel(LogLevel.ERROR)
+    .build()
+```
+
+</CodeGroup>
+
+## Environment-Specific Configuration
+
+### Using Gradle Build Types
+
+Recommended approach for managing environment-specific configuration:
+
+```groovy build.gradle
+android {
+    buildTypes {
+        debug {
+            buildConfigField "String", "PAYMAYA_PUBLIC_KEY", "\"pk-test-xxxxxxxxxxxxxxxx\""
+            buildConfigField "String", "PAYMAYA_ENV", "\"SANDBOX\""
+        }
+        release {
+            buildConfigField "String", "PAYMAYA_PUBLIC_KEY", "\"pk-live-xxxxxxxxxxxxxxxx\""
+            buildConfigField "String", "PAYMAYA_ENV", "\"PRODUCTION\""
+        }
+    }
+}
+```
+
+Then in your code:
+
+```kotlin
+val environment = if (BuildConfig.PAYMAYA_ENV == "PRODUCTION") {
+    PayMayaEnvironment.PRODUCTION
+} else {
+    PayMayaEnvironment.SANDBOX
+}
+
+val logLevel = if (BuildConfig.DEBUG) {
+    LogLevel.DEBUG
+} else {
+    LogLevel.ERROR
+}
+
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey(BuildConfig.PAYMAYA_PUBLIC_KEY)
+    .environment(environment)
+    .logLevel(logLevel)
+    .build()
+```
+
+## Switching Between Environments
+
+<Warning>
+Changing environments requires rebuilding the client instance. Environment cannot be changed at runtime.
+</Warning>
+
+```kotlin
+// For development/testing
+val sandboxClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxxxxxxxxxxxxxxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.DEBUG)
+    .build()
+
+// For production
+val productionClient = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-live-xxxxxxxxxxxxxxxx")
+    .environment(PayMayaEnvironment.PRODUCTION)
+    .logLevel(LogLevel.ERROR)
+    .build()
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Testing Guide" icon="flask" href="/guides/testing">
+    Learn how to test your integration using sandbox environment
+  </Card>
+  <Card title="Result Handling" icon="code" href="/guides/result-handling">
+    Implement proper handling of payment results
+  </Card>
+</CardGroup>

@@ -1,0 +1,78 @@
+---
+title: CreateWalletLinkRequest
+description: Model with data required to create a wallet link
+---
+
+The `CreateWalletLinkRequest` class contains the data required to create a wallet link that allows customers to link their PayMaya wallet to your application.
+
+## Properties
+
+<ParamField path="requestReferenceNumber" type="String" required>
+  Reference number assigned by the merchant to identify a transaction.
+</ParamField>
+
+<ParamField path="redirectUrl" type="RedirectUrl" required>
+  Set of redirect URLs upon process completion (success, failure, cancel).
+</ParamField>
+
+<ParamField path="metadata" type="JSONObject">
+  Additional metadata about the wallet link creation.
+</ParamField>
+
+## Related Classes
+
+### RedirectUrl
+
+Redirect URL model defining URLs used to redirect to specific pages once the wallet link creation process is done.
+
+<ParamField path="success" type="String" required>
+  Success URL where the customer will be redirected after successfully linking their wallet.
+</ParamField>
+
+<ParamField path="failure" type="String" required>
+  Failure URL where the customer will be redirected if the linking process fails.
+</ParamField>
+
+<ParamField path="cancel" type="String" required>
+  Cancel URL where the customer will be redirected if they cancel the linking process.
+</ParamField>
+
+## Example
+
+```kotlin
+val walletLinkRequest = CreateWalletLinkRequest(
+    requestReferenceNumber = "LINK-123456",
+    redirectUrl = RedirectUrl(
+        success = "https://example.com/wallet/success",
+        failure = "https://example.com/wallet/failure",
+        cancel = "https://example.com/wallet/cancel"
+    ),
+    metadata = JSONObject().apply {
+        put("customerId", "CUST-456")
+        put("linkPurpose", "subscription")
+    }
+)
+```
+
+## Usage
+
+After creating a `CreateWalletLinkRequest`, pass it to the `PayWithPayMaya.createWalletLink()` method:
+
+```kotlin
+val payWithPayMaya = PayMayaSDK.getPayWithPayMaya()
+val result = payWithPayMaya.createWalletLink(walletLinkRequest)
+
+when (result) {
+    is CreateWalletLinkResult.Success -> {
+        // Handle success
+        val linkId = result.linkId
+    }
+    is CreateWalletLinkResult.Cancel -> {
+        // Handle cancellation
+    }
+    is CreateWalletLinkResult.Failure -> {
+        // Handle failure
+        val exception = result.exception
+    }
+}
+```

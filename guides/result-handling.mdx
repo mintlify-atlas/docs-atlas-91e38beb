@@ -1,0 +1,434 @@
+---
+title: Result Handling
+description: Complete guide to handling payment results from all PayMaya SDK payment types
+---
+
+## Overview
+
+The PayMaya Android SDK returns payment results through the standard Android Activity result mechanism. Each payment type has its own result class with `Success`, `Cancel`, and `Failure` states.
+
+## Activity Result Pattern
+
+All payment methods follow the same pattern:
+
+1. Start payment activity with `startXxxActivityForResult()`
+2. Override `onActivityResult()` in your Activity
+3. Call the appropriate SDK `onActivityResult()` method
+4. Handle the returned result object
+
+## Checkout Results
+
+### PayMayaCheckoutResult
+
+The Checkout payment returns one of three result types:
+
+```kotlin PayMayaCheckoutResult.kt
+sealed class PayMayaCheckoutResult(open val checkoutId: String?) {
+    
+    /**
+     * Success result of the Checkout payment.
+     */
+    class Success internal constructor(
+        override val checkoutId: String
+    ) : PayMayaCheckoutResult(checkoutId)
+
+    /**
+     * Canceled result of the Checkout payment.
+     */
+    class Cancel internal constructor(
+        override val checkoutId: String? = null
+    ) : PayMayaCheckoutResult(checkoutId)
+
+    /**
+     * Failed result of the Checkout payment.
+     */
+    class Failure internal constructor(
+        override val checkoutId: String? = null,
+        val exception: Exception
+    ) : PayMayaCheckoutResult(checkoutId)
+}
+```
+
+### Handling Checkout Results
+
+```kotlin Example from README.md
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    payMayaCheckoutClient.onActivityResult(requestCode, resultCode, data)?.let {
+        processCheckoutResult(it)
+    }
+}
+
+private fun processCheckoutResult(result: PayMayaCheckoutResult) {
+    when (result) {
+        is PayMayaCheckoutResult.Success -> {
+            val message = "Success, checkoutId: ${result.checkoutId}"
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+
+        is PayMayaCheckoutResult.Cancel -> {
+            val message = "Canceled, checkoutId: ${result.checkoutId}"
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+
+        is PayMayaCheckoutResult.Failure -> {
+            val message = "Failure, checkoutId: ${result.checkoutId}, exception: ${result.exception}"
+            if (result.exception is BadRequestException) {
+                Log.d(TAG, (result.exception as BadRequestException).error.toString())
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+}
+```
+
+<Note>
+The `checkoutId` is always available in `Success` results, but may be `null` in `Cancel` or `Failure` results if the payment didn't progress far enough to receive an ID.
+</Note>
+
+## Pay With PayMaya Results
+
+### Single Payment Result
+
+```kotlin SinglePaymentResult.kt
+sealed class SinglePaymentResult : PayWithPayMayaResult() {
+
+    /**
+     * Success result of the Single Payment.
+     */
+    class Success internal constructor(
+        val paymentId: String
+    ) : SinglePaymentResult()
+
+    /**
+     * Canceled result of the Single Payment.
+     */
+    class Cancel internal constructor(
+        val paymentId: String? = null
+    ) : SinglePaymentResult()
+
+    /**
+     * Failed result of the Single Payment.
+     */
+    class Failure internal constructor(
+        val paymentId: String? = null,
+        val exception: Exception
+    ) : SinglePaymentResult()
+}
+```
+
+### Handling Single Payment Results
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    PayWithPayMaya.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is SinglePaymentResult.Success -> {
+                // Payment completed successfully
+                val paymentId = result.paymentId
+                Log.d(TAG, "Payment successful: $paymentId")
+                updateOrderStatus(paymentId, "PAID")
+            }
+            
+            is SinglePaymentResult.Cancel -> {
+                // User canceled the payment
+                Log.d(TAG, "Payment canceled: ${result.paymentId}")
+                showMessage("Payment was canceled")
+            }
+            
+            is SinglePaymentResult.Failure -> {
+                // Payment failed
+                Log.e(TAG, "Payment failed: ${result.exception.message}")
+                handlePaymentFailure(result.exception)
+            }
+        }
+    }
+}
+```
+
+### Wallet Link Result
+
+```kotlin CreateWalletLinkResult.kt
+sealed class CreateWalletLinkResult : PayWithPayMayaResult() {
+
+    /**
+     * Success result of the creation of the wallet link.
+     */
+    class Success internal constructor(
+        val linkId: String
+    ) : CreateWalletLinkResult()
+
+    /**
+     * Canceled result of the creation of the wallet link.
+     */
+    class Cancel internal constructor(
+        val linkId: String? = null
+    ) : CreateWalletLinkResult()
+
+    /**
+     * Failed result of the creation of the wallet link.
+     */
+    class Failure internal constructor(
+        val linkId: String? = null,
+        val exception: Exception
+    ) : CreateWalletLinkResult()
+}
+```
+
+### Handling Wallet Link Results
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    PayWithPayMaya.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is CreateWalletLinkResult.Success -> {
+                // Wallet link created successfully
+                val linkId = result.linkId
+                saveWalletLinkId(linkId)
+                Log.d(TAG, "Wallet link created: $linkId")
+            }
+            
+            is CreateWalletLinkResult.Cancel -> {
+                Log.d(TAG, "Wallet link creation canceled")
+            }
+            
+            is CreateWalletLinkResult.Failure -> {
+                Log.e(TAG, "Wallet link creation failed: ${result.exception.message}")
+            }
+        }
+    }
+}
+```
+
+## Vault Results
+
+### PayMayaVaultResult
+
+```kotlin PayMayaVaultResult.kt
+sealed class PayMayaVaultResult {
+
+    /**
+     * Success result of the card tokenization process.
+     */
+    class Success internal constructor(
+        val paymentTokenId: String,
+        val state: String,
+        val createdAt: String,
+        val updatedAt: String,
+        val issuer: String
+    ) : PayMayaVaultResult()
+
+    /**
+     * Canceled result of the card tokenization process.
+     */
+    object Cancel : PayMayaVaultResult()
+}
+```
+
+<Note>
+Vault does not return a `Failure` result. Card validation errors are shown in the vault UI.
+</Note>
+
+### Handling Vault Results
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    payMayaVaultClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is PayMayaVaultResult.Success -> {
+                // Card tokenized successfully
+                val tokenId = result.paymentTokenId
+                val cardIssuer = result.issuer
+                
+                Log.d(TAG, "Token ID: $tokenId")
+                Log.d(TAG, "Issuer: $cardIssuer")
+                Log.d(TAG, "State: ${result.state}")
+                
+                // Store token for future payments
+                savePaymentToken(tokenId)
+            }
+            
+            is PayMayaVaultResult.Cancel -> {
+                Log.d(TAG, "Card tokenization canceled")
+                showMessage("Card was not added")
+            }
+        }
+    }
+}
+```
+
+## Exception Handling
+
+The SDK provides several exception types for different failure scenarios:
+
+### BadRequestException
+
+Thrown when the server returns 400 (Bad Request) or 401 (Unauthorized):
+
+```kotlin BadRequestException.kt
+class BadRequestException internal constructor(
+    message: String,
+    val error: BaseError
+) : Exception(message)
+```
+
+**Common causes:**
+- Invalid API key
+- Malformed request data
+- Missing required fields
+- Invalid authentication
+
+```kotlin
+when (result) {
+    is PayMayaCheckoutResult.Failure -> {
+        when (val exception = result.exception) {
+            is BadRequestException -> {
+                // Access detailed error information
+                Log.e(TAG, "Bad request: ${exception.message}")
+                Log.e(TAG, "Error details: ${exception.error}")
+                showMessage("Payment request was invalid")
+            }
+            else -> handleOtherException(exception)
+        }
+    }
+}
+```
+
+### HttpException
+
+Thrown for other HTTP errors:
+
+```kotlin HttpException.kt
+class HttpException internal constructor(
+    val code: Int,
+    message: String
+) : Exception(message)
+```
+
+**Common causes:**
+- Network connectivity issues
+- Server errors (500+)
+- Timeout errors
+
+```kotlin
+when (val exception = result.exception) {
+    is HttpException -> {
+        Log.e(TAG, "HTTP error ${exception.code}: ${exception.message}")
+        when (exception.code) {
+            500, 502, 503 -> showMessage("Server error. Please try again later.")
+            408 -> showMessage("Request timeout. Please check your connection.")
+            else -> showMessage("An error occurred: ${exception.message}")
+        }
+    }
+}
+```
+
+### InternalException
+
+Thrown when an unexpected response is received:
+
+```kotlin InternalException.kt
+class InternalException internal constructor(
+    message: String,
+    cause: Throwable? = null
+) : Exception(message, cause)
+```
+
+### PaymentFailedException
+
+Thrown when a payment explicitly fails:
+
+```kotlin PaymentFailedException.kt
+object PaymentFailedException : Exception()
+```
+
+### Complete Exception Handling Example
+
+```kotlin
+private fun handlePaymentFailure(exception: Exception) {
+    when (exception) {
+        is BadRequestException -> {
+            Log.e(TAG, "Bad request: ${exception.error}")
+            showError("Invalid payment request. Please check your details.")
+        }
+        
+        is HttpException -> {
+            Log.e(TAG, "HTTP ${exception.code}: ${exception.message}")
+            showError("Connection error. Please try again.")
+        }
+        
+        is InternalException -> {
+            Log.e(TAG, "Internal error: ${exception.message}", exception.cause)
+            showError("An unexpected error occurred.")
+        }
+        
+        is PaymentFailedException -> {
+            Log.e(TAG, "Payment failed")
+            showError("Payment could not be processed.")
+        }
+        
+        else -> {
+            Log.e(TAG, "Unknown error: ${exception.message}")
+            showError("An error occurred: ${exception.message}")
+        }
+    }
+}
+```
+
+## Automatic Status Checking
+
+<Info>
+When users close a payment activity (e.g., by pressing Back), the SDK automatically checks the payment status if a transaction ID was already received.
+</Info>
+
+### Checkout Status Mapping
+
+For Checkout payments:
+- `PAYMENT_SUCCESS` → `PayMayaCheckoutResult.Success`
+- `AUTH_FAILED` or `PAYMENT_FAILED` → `PayMayaCheckoutResult.Failure`
+- Other statuses → `PayMayaCheckoutResult.Cancel`
+
+### Pay With PayMaya Status Mapping
+
+For Pay With PayMaya:
+- `PAYMENT_SUCCESS` → `SinglePaymentResult.Success`
+- `AUTH_FAILED` or `PAYMENT_FAILED` → `SinglePaymentResult.Failure`
+- Other statuses → `SinglePaymentResult.Cancel`
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Check for Null" icon="shield-check">
+    The SDK `onActivityResult()` returns nullable results. Always use safe calls or null checks.
+  </Card>
+  
+  <Card title="Store Transaction IDs" icon="database">
+    Save checkoutId or paymentId immediately for reconciliation and support.
+  </Card>
+  
+  <Card title="Handle All States" icon="code-branch">
+    Implement handling for Success, Cancel, and Failure to provide clear user feedback.
+  </Card>
+  
+  <Card title="Log Exceptions" icon="bug">
+    Always log exception details for debugging and monitoring.
+  </Card>
+  
+  <Card title="User Feedback" icon="comment">
+    Provide clear, user-friendly messages for each result type.
+  </Card>
+  
+  <Card title="Status Verification" icon="check-double">
+    For critical transactions, verify payment status on your backend.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Payment Status" icon="chart-line" href="/guides/payment-status">
+    Learn how to manually check payment status
+  </Card>
+  <Card title="Testing Guide" icon="flask" href="/guides/testing">
+    Test your result handling with sandbox environment
+  </Card>
+</CardGroup>

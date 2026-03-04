@@ -1,80 +1,426 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Process your first payment with the PayMaya Android SDK v2 in minutes
 ---
 
-## Get started in three steps
+This guide will walk you through processing your first payment using the PayMaya Checkout API. You'll learn how to initialize the SDK, create a checkout request, and handle payment results.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- Completed the [installation](/installation) steps
+- A PayMaya public API key ([get sandbox keys](https://developers.paymaya.com/))
+- An Activity or Fragment where you want to initiate payments
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  For testing, use the [Sandbox environment](https://developers.paymaya.com/blog/entry/checkout-api-test-credit-card-account-numbers) with test credit card numbers.
 </Note>
+
+## Complete Example
+
+Follow these steps to implement a basic checkout flow:
+
+<Steps>
+  <Step title="Import Required Classes">
+    Add the necessary imports to your Activity:
+
+    ```kotlin MainActivity.kt
+    import android.content.Intent
+    import android.os.Bundle
+    import android.widget.Toast
+    import androidx.appcompat.app.AppCompatActivity
+    import com.paymaya.sdk.android.checkout.PayMayaCheckout
+    import com.paymaya.sdk.android.checkout.PayMayaCheckoutResult
+    import com.paymaya.sdk.android.checkout.models.*
+    import com.paymaya.sdk.android.common.LogLevel
+    import com.paymaya.sdk.android.common.PayMayaEnvironment
+    import com.paymaya.sdk.android.common.models.RedirectUrl
+    import com.paymaya.sdk.android.common.models.TotalAmount
+    import java.math.BigDecimal
+    ```
+  </Step>
+
+  <Step title="Initialize the Checkout Client">
+    Create a PayMaya Checkout client instance. This should typically be done in your Activity's `onCreate()` or as a class property:
+
+    ```kotlin MainActivity.kt
+    class MainActivity : AppCompatActivity() {
+
+        private lateinit var payMayaCheckoutClient: PayMayaCheckout
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+
+            // Initialize PayMaya Checkout client
+            payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+                .clientPublicKey("pk-Z0OSzLvIcOI2UIvDhdTGVVfRSSeiGStnceqwUE7n0Ah")  // Replace with your key
+                .environment(PayMayaEnvironment.SANDBOX)
+                .logLevel(LogLevel.ERROR)
+                .build()
+        }
+    }
+    ```
+
+    <Warning>
+      Replace `clientPublicKey` with your actual public API key. Use Sandbox keys for testing and Production keys for live transactions.
+    </Warning>
+
+    **Builder Parameters:**
+    - `clientPublicKey()`: Your PayMaya public API key (required)
+    - `environment()`: `PayMayaEnvironment.SANDBOX` or `PayMayaEnvironment.PRODUCTION` (required)
+    - `logLevel()`: Logging level for debugging (optional, defaults to ERROR)
+
+    Available log levels:
+    - `LogLevel.VERBOSE`: Http request/response lines, headers, and bodies
+    - `LogLevel.DEBUG`: Http request/response lines and headers
+    - `LogLevel.INFO`: Http request/response lines only
+    - `LogLevel.WARN`, `LogLevel.ERROR`, `LogLevel.ASSERT`
+  </Step>
+
+  <Step title="Create a Checkout Request">
+    Build a `CheckoutRequest` with transaction details:
+
+    ```kotlin MainActivity.kt
+    private fun startPayment() {
+        // Define the total amount
+        val totalAmount = TotalAmount(
+            value = BigDecimal("100.00"),
+            currency = "PHP"
+        )
+
+        // Create buyer information (optional but recommended)
+        val buyer = Buyer(
+            firstName = "Juan",
+            lastName = "Dela Cruz",
+            contact = Contact(
+                phone = "+639181234567",
+                email = "juan.delacruz@example.com"
+            )
+        )
+
+        // Create items list
+        val items = listOf(
+            Item(
+                name = "Premium Subscription",
+                quantity = 1,
+                code = "PREMIUM-001",
+                description = "Monthly premium subscription",
+                totalAmount = TotalAmount(
+                    value = BigDecimal("100.00"),
+                    currency = "PHP"
+                )
+            )
+        )
+
+        // Define redirect URLs
+        val redirectUrl = RedirectUrl(
+            success = "https://yourapp.com/success",
+            failure = "https://yourapp.com/failure",
+            cancel = "https://yourapp.com/cancel"
+        )
+
+        // Create the checkout request
+        val request = CheckoutRequest(
+            totalAmount = totalAmount,
+            buyer = buyer,
+            items = items,
+            requestReferenceNumber = "REF-${System.currentTimeMillis()}",
+            redirectUrl = redirectUrl,
+            metadata = null
+        )
+
+        // Start the checkout activity
+        payMayaCheckoutClient.startCheckoutActivityForResult(this, request)
+    }
+    ```
+
+    <Note>
+      The `requestReferenceNumber` should be a unique identifier for each transaction. This helps you track payments in your system.
+    </Note>
+
+    **CheckoutRequest Parameters:**
+    - `totalAmount`: Transaction amount with currency (required)
+    - `buyer`: Customer information (optional)
+    - `items`: List of items being purchased (required)
+    - `requestReferenceNumber`: Your unique transaction reference (required)
+    - `redirectUrl`: URLs for different payment outcomes (required)
+    - `metadata`: Additional custom data as JSONObject (optional)
+  </Step>
+
+  <Step title="Handle Payment Results">
+    Override `onActivityResult()` to receive the payment result:
+
+    ```kotlin MainActivity.kt
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        // Check if this is a PayMaya result
+        payMayaCheckoutClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+            processCheckoutResult(result)
+        }
+    }
+
+    private fun processCheckoutResult(result: PayMayaCheckoutResult) {
+        when (result) {
+            is PayMayaCheckoutResult.Success -> {
+                // Payment successful
+                val message = "Payment successful! Checkout ID: ${result.checkoutId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                
+                // TODO: Update your backend, show success screen, etc.
+            }
+
+            is PayMayaCheckoutResult.Cancel -> {
+                // Payment canceled by user
+                val message = "Payment canceled. Checkout ID: ${result.checkoutId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                
+                // TODO: Handle cancellation
+            }
+
+            is PayMayaCheckoutResult.Failure -> {
+                // Payment failed
+                val message = "Payment failed. Checkout ID: ${result.checkoutId}, Error: ${result.exception.message}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                
+                // Check for specific error types
+                if (result.exception is com.paymaya.sdk.android.common.exceptions.BadRequestException) {
+                    val badRequestException = result.exception as com.paymaya.sdk.android.common.exceptions.BadRequestException
+                    // Access detailed error information
+                    Log.e("PayMaya", "Error details: ${badRequestException.error}")
+                }
+                
+                // TODO: Handle failure
+            }
+        }
+    }
+    ```
+
+    <Note>
+      If the user closes the checkout activity (e.g., by pressing the Back button), the SDK automatically checks the payment status and returns the appropriate result.
+    </Note>
+
+    **Result Types:**
+    - `PayMayaCheckoutResult.Success`: Payment completed successfully
+      - Contains: `checkoutId`
+    - `PayMayaCheckoutResult.Cancel`: Payment canceled by user
+      - Contains: `checkoutId` (if available)
+    - `PayMayaCheckoutResult.Failure`: Payment failed
+      - Contains: `checkoutId` (if available), `exception`
+  </Step>
+
+  <Step title="Check Payment Status (Optional)">
+    You can manually verify payment status using the `checkoutId`:
+
+    ```kotlin MainActivity.kt
+    private fun checkPaymentStatus(checkoutId: String) {
+        // This is a synchronous call - run on a background thread
+        Thread {
+            val statusResult = payMayaCheckoutClient.checkPaymentStatus(checkoutId)
+            
+            runOnUiThread {
+                when (statusResult) {
+                    is com.paymaya.sdk.android.common.CheckPaymentStatusResult.Success -> {
+                        // Status retrieved successfully
+                        val status = statusResult.status
+                        Toast.makeText(this, "Payment status: $status", Toast.LENGTH_SHORT).show()
+                    }
+                    is com.paymaya.sdk.android.common.CheckPaymentStatusResult.Failure -> {
+                        // Failed to retrieve status
+                        Toast.makeText(this, "Failed to check status", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }.start()
+    }
+    ```
+
+    <Warning>
+      The `checkPaymentStatus()` method is synchronous and should not be called from the main thread. Use a background thread, coroutine, or RxJava.
+    </Warning>
+
+    Payment statuses include:
+    - `PAYMENT_SUCCESS`: Payment completed successfully
+    - `AUTH_FAILED`: Authentication failed
+    - `PAYMENT_FAILED`: Payment processing failed
+    - Other statuses as defined in `PaymentStatus` enum
+  </Step>
+</Steps>
+
+## Full Example Code
+
+Here's the complete Activity implementation:
+
+```kotlin MainActivity.kt
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.paymaya.sdk.android.checkout.PayMayaCheckout
+import com.paymaya.sdk.android.checkout.PayMayaCheckoutResult
+import com.paymaya.sdk.android.checkout.models.*
+import com.paymaya.sdk.android.common.LogLevel
+import com.paymaya.sdk.android.common.PayMayaEnvironment
+import com.paymaya.sdk.android.common.exceptions.BadRequestException
+import com.paymaya.sdk.android.common.models.RedirectUrl
+import com.paymaya.sdk.android.common.models.TotalAmount
+import java.math.BigDecimal
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var payMayaCheckoutClient: PayMayaCheckout
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Initialize PayMaya Checkout client
+        payMayaCheckoutClient = PayMayaCheckout.newBuilder()
+            .clientPublicKey("pk-Z0OSzLvIcOI2UIvDhdTGVVfRSSeiGStnceqwUE7n0Ah")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .logLevel(LogLevel.ERROR)
+            .build()
+
+        // Set up pay button
+        findViewById<Button>(R.id.btnPay).setOnClickListener {
+            startPayment()
+        }
+    }
+
+    private fun startPayment() {
+        val totalAmount = TotalAmount(
+            value = BigDecimal("100.00"),
+            currency = "PHP"
+        )
+
+        val buyer = Buyer(
+            firstName = "Juan",
+            lastName = "Dela Cruz",
+            contact = Contact(
+                phone = "+639181234567",
+                email = "juan.delacruz@example.com"
+            )
+        )
+
+        val items = listOf(
+            Item(
+                name = "Premium Subscription",
+                quantity = 1,
+                code = "PREMIUM-001",
+                description = "Monthly premium subscription",
+                totalAmount = TotalAmount(
+                    value = BigDecimal("100.00"),
+                    currency = "PHP"
+                )
+            )
+        )
+
+        val redirectUrl = RedirectUrl(
+            success = "https://yourapp.com/success",
+            failure = "https://yourapp.com/failure",
+            cancel = "https://yourapp.com/cancel"
+        )
+
+        val request = CheckoutRequest(
+            totalAmount = totalAmount,
+            buyer = buyer,
+            items = items,
+            requestReferenceNumber = "REF-${System.currentTimeMillis()}",
+            redirectUrl = redirectUrl
+        )
+
+        payMayaCheckoutClient.startCheckoutActivityForResult(this, request)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        payMayaCheckoutClient.onActivityResult(requestCode, resultCode, data)?.let {
+            processCheckoutResult(it)
+        }
+    }
+
+    private fun processCheckoutResult(result: PayMayaCheckoutResult) {
+        when (result) {
+            is PayMayaCheckoutResult.Success -> {
+                val message = "Success! Checkout ID: ${result.checkoutId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+
+            is PayMayaCheckoutResult.Cancel -> {
+                val message = "Canceled. Checkout ID: ${result.checkoutId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+
+            is PayMayaCheckoutResult.Failure -> {
+                val message = "Failure. Checkout ID: ${result.checkoutId}"
+                if (result.exception is BadRequestException) {
+                    Log.d("PayMaya", (result.exception as BadRequestException).error.toString())
+                }
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+}
+```
+
+## Testing in Sandbox
+
+Use these test credit cards in the Sandbox environment:
+
+| Card Type | Card Number | CVV | Expiry |
+|-----------|-------------|-----|--------|
+| Visa | 4123450131001381 | 123 | Any future date |
+| Mastercard | 5455590000000009 | 123 | Any future date |
+
+<Note>
+  Find more test cards in the [PayMaya Developer Documentation](https://developers.paymaya.com/blog/entry/checkout-api-test-credit-card-account-numbers).
+</Note>
+
+## Common Issues
+
+### onActivityResult not called (Android 11+)
+
+If you're targeting Android 11 (API 30) or higher and using Activity Result APIs:
+
+```kotlin
+import androidx.activity.result.contract.ActivityResultContracts
+
+private val paymentLauncher = registerForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+) { result ->
+    payMayaCheckoutClient.onActivityResult(
+        requestCode = 1,
+        resultCode = result.resultCode,
+        data = result.data
+    )?.let { processCheckoutResult(it) }
+}
+```
+
+### Invalid API Key Error
+
+Ensure you're using:
+- Public key (starts with `pk-`)
+- Correct environment (Sandbox keys won't work in Production)
+- Valid, active API key
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Checkout API" icon="credit-card" href="/payment-methods/checkout">
+    Learn about advanced Checkout features
+  </Card>
+  <Card title="Pay With PayMaya" icon="wallet" href="/payment-methods/pay-with-paymaya">
+    Integrate PayMaya wallet payments
+  </Card>
+  <Card title="Vault API" icon="lock" href="/payment-methods/vault">
+    Tokenize cards for recurring payments
+  </Card>
+  <Card title="Error Handling" icon="exclamation-triangle" href="/guides/result-handling">
+    Handle errors and exceptions
+  </Card>
+</CardGroup>

@@ -1,0 +1,420 @@
+---
+title: 'Pay With PayMaya'
+description: 'Accept payments using PayMaya wallet for single payments and recurring charges'
+icon: 'wallet'
+---
+
+## Overview
+
+Pay With PayMaya provides two payment flows:
+
+1. **Single Payment** - One-time payment using a PayMaya wallet
+2. **Wallet Link** - Create a wallet link for recurring payments (charge a PayMaya account later)
+
+Both flows use a secure WebView where customers authenticate and authorize payments.
+
+## Client Initialization
+
+Initialize the Pay With PayMaya client with your API credentials:
+
+```kotlin
+val payWithPayMayaClient = PayWithPayMaya.newBuilder()
+    .clientPublicKey("pk-test-your-public-key")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .logLevel(LogLevel.ERROR)
+    .build()
+```
+
+### Builder Methods
+
+| Method | Required | Description |
+|--------|----------|-------------|
+| `clientPublicKey(String)` | Yes | Your PayMaya client public key |
+| `environment(PayMayaEnvironment)` | Yes | `SANDBOX` or `PRODUCTION` |
+| `logLevel(LogLevel)` | No | Console logging level (VERBOSE, DEBUG, INFO, WARN, ERROR, ASSERT) |
+
+## Single Payment
+
+Single Payment allows customers to make a one-time payment using their PayMaya wallet.
+
+### Flow Steps
+
+<Steps>
+  <Step title="Create Single Payment Request">
+    Build a `SinglePaymentRequest` with payment amount and redirect URLs.
+  </Step>
+  
+  <Step title="Start Payment Activity">
+    Launch the payment activity where customers authenticate with their PayMaya wallet.
+  </Step>
+  
+  <Step title="Handle Result">
+    Process the payment result to determine success, cancellation, or failure.
+  </Step>
+</Steps>
+
+### Creating a Single Payment Request
+
+```kotlin
+// Define the payment amount
+val totalAmount = TotalAmount(
+    value = BigDecimal("250.00"),
+    currency = "PHP"
+)
+
+// Define redirect URLs
+val redirectUrl = RedirectUrl(
+    success = "https://yourapp.com/success",
+    failure = "https://yourapp.com/failure",
+    cancel = "https://yourapp.com/cancel"
+)
+
+// Create the single payment request
+val request = SinglePaymentRequest(
+    totalAmount = totalAmount,
+    requestReferenceNumber = "PAYMENT-${System.currentTimeMillis()}",
+    redirectUrl = redirectUrl,
+    metadata = JSONObject().apply {
+        put("orderId", "12345")
+        put("customerId", "user-67890")
+    }
+)
+```
+
+### SinglePaymentRequest Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `totalAmount` | `TotalAmount` | Yes | Transaction amount details |
+| `requestReferenceNumber` | `String` | Yes | Merchant's reference number for the transaction |
+| `redirectUrl` | `RedirectUrl` | Yes | URLs for success, failure, and cancel scenarios |
+| `metadata` | `JSONObject` | No | Additional custom data |
+
+### Starting Single Payment
+
+Launch the single payment activity:
+
+```kotlin
+payWithPayMayaClient.startSinglePaymentActivityForResult(this, request)
+```
+
+### Handling Single Payment Results
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    payWithPayMayaClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is SinglePaymentResult.Success -> {
+                val message = "Payment successful! Payment ID: ${result.paymentId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                // Process successful payment
+            }
+            
+            is SinglePaymentResult.Cancel -> {
+                val message = "Payment canceled. Payment ID: ${result.paymentId}"
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                // Handle cancellation
+            }
+            
+            is SinglePaymentResult.Failure -> {
+                val message = "Payment failed: ${result.exception.message}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                // Handle failure
+            }
+        }
+    }
+}
+```
+
+#### SinglePaymentResult Types
+
+**SinglePaymentResult.Success**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `paymentId` | `String` | Payment identifier for the transaction |
+
+**SinglePaymentResult.Cancel**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `paymentId` | `String?` | Payment identifier if available, null otherwise |
+
+**SinglePaymentResult.Failure**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `paymentId` | `String?` | Payment identifier if available, null otherwise |
+| `exception` | `Exception` | Exception with detailed reason for the failure |
+
+<Warning>
+If the user closes the activity (e.g., by pressing Back button), the SDK automatically checks payment status if `paymentId` has been retrieved:
+- `PAYMENT_SUCCESS` → `SinglePaymentResult.Success`
+- `AUTH_FAILED` or `PAYMENT_FAILED` → `SinglePaymentResult.Failure`
+- Otherwise → `SinglePaymentResult.Cancel`
+</Warning>
+
+## Wallet Link
+
+Wallet Link creates a link to a PayMaya wallet that allows you to charge the account later for recurring payments.
+
+### Flow Steps
+
+<Steps>
+  <Step title="Create Wallet Link Request">
+    Build a `CreateWalletLinkRequest` with your reference number and redirect URLs.
+  </Step>
+  
+  <Step title="Start Wallet Link Activity">
+    Launch the activity where customers link their PayMaya wallet.
+  </Step>
+  
+  <Step title="Handle Result">
+    Receive the `linkId` which can be used for future charges.
+  </Step>
+</Steps>
+
+### Creating a Wallet Link Request
+
+```kotlin
+// Define redirect URLs
+val redirectUrl = RedirectUrl(
+    success = "https://yourapp.com/success",
+    failure = "https://yourapp.com/failure",
+    cancel = "https://yourapp.com/cancel"
+)
+
+// Create the wallet link request
+val request = CreateWalletLinkRequest(
+    requestReferenceNumber = "LINK-${System.currentTimeMillis()}",
+    redirectUrl = redirectUrl,
+    metadata = JSONObject().apply {
+        put("customerId", "user-67890")
+        put("subscriptionPlan", "premium")
+    }
+)
+```
+
+### CreateWalletLinkRequest Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `requestReferenceNumber` | `String` | Yes | Merchant's reference number for the wallet link |
+| `redirectUrl` | `RedirectUrl` | Yes | URLs for success, failure, and cancel scenarios |
+| `metadata` | `JSONObject` | No | Additional custom data |
+
+### Starting Wallet Link Creation
+
+Launch the wallet link activity:
+
+```kotlin
+payWithPayMayaClient.startCreateWalletLinkActivityForResult(this, request)
+```
+
+### Handling Wallet Link Results
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+    
+    payWithPayMayaClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+        when (result) {
+            is CreateWalletLinkResult.Success -> {
+                val message = "Wallet linked successfully! Link ID: ${result.linkId}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                // Store linkId for future recurring charges
+                saveWalletLinkId(result.linkId)
+            }
+            
+            is CreateWalletLinkResult.Cancel -> {
+                val message = "Wallet linking canceled"
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                // Handle cancellation
+            }
+            
+            is CreateWalletLinkResult.Failure -> {
+                val message = "Wallet linking failed: ${result.exception.message}"
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                // Handle failure
+            }
+        }
+    }
+}
+```
+
+#### CreateWalletLinkResult Types
+
+**CreateWalletLinkResult.Success**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `linkId` | `String` | Wallet link identifier for future recurring charges |
+
+**CreateWalletLinkResult.Cancel**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `linkId` | `String?` | Wallet link identifier if available, null otherwise |
+
+**CreateWalletLinkResult.Failure**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `linkId` | `String?` | Wallet link identifier if available, null otherwise |
+| `exception` | `Exception` | Exception with detailed reason for the failure |
+
+<Note>
+The `linkId` returned from a successful wallet link creation can be used on your backend to charge the customer's PayMaya wallet for recurring payments.
+</Note>
+
+## Checking Payment Status
+
+Manually verify the status of a payment:
+
+```kotlin
+// This method is synchronous - call from a background thread
+lifecycleScope.launch(Dispatchers.IO) {
+    val status = payWithPayMayaClient.checkPaymentStatus(paymentId)
+    
+    withContext(Dispatchers.Main) {
+        when (status) {
+            is CheckPaymentStatusResult.Success -> {
+                Log.d(TAG, "Payment status: ${status.paymentStatus}")
+            }
+            is CheckPaymentStatusResult.Failure -> {
+                Log.e(TAG, "Status check failed: ${status.exception}")
+            }
+        }
+    }
+}
+```
+
+<Note>
+The `checkPaymentStatus` method is synchronous. Always call it from a background thread.
+</Note>
+
+## Testing
+
+For the Sandbox environment, use the test credentials provided in the [PayMaya documentation](https://developers.paymaya.com/blog/entry/checkout-api-test-credit-card-account-numbers).
+
+## Complete Examples
+
+### Single Payment Example
+
+```kotlin
+class SinglePaymentActivity : AppCompatActivity() {
+    
+    private lateinit var payWithPayMayaClient: PayWithPayMaya
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_single_payment)
+        
+        // Initialize client
+        payWithPayMayaClient = PayWithPayMaya.newBuilder()
+            .clientPublicKey("pk-test-your-public-key")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .logLevel(LogLevel.ERROR)
+            .build()
+        
+        findViewById<Button>(R.id.btnPay).setOnClickListener {
+            startSinglePayment()
+        }
+    }
+    
+    private fun startSinglePayment() {
+        val request = SinglePaymentRequest(
+            totalAmount = TotalAmount(
+                value = BigDecimal("250.00"),
+                currency = "PHP"
+            ),
+            requestReferenceNumber = "PAYMENT-${System.currentTimeMillis()}",
+            redirectUrl = RedirectUrl(
+                success = "https://yourapp.com/success",
+                failure = "https://yourapp.com/failure",
+                cancel = "https://yourapp.com/cancel"
+            )
+        )
+        
+        payWithPayMayaClient.startSinglePaymentActivityForResult(this, request)
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        payWithPayMayaClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+            when (result) {
+                is SinglePaymentResult.Success -> {
+                    Toast.makeText(this, "Payment Successful!", Toast.LENGTH_LONG).show()
+                }
+                is SinglePaymentResult.Cancel -> {
+                    Toast.makeText(this, "Payment Canceled", Toast.LENGTH_SHORT).show()
+                }
+                is SinglePaymentResult.Failure -> {
+                    Toast.makeText(this, "Payment Failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+}
+```
+
+### Wallet Link Example
+
+```kotlin
+class WalletLinkActivity : AppCompatActivity() {
+    
+    private lateinit var payWithPayMayaClient: PayWithPayMaya
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_wallet_link)
+        
+        // Initialize client
+        payWithPayMayaClient = PayWithPayMaya.newBuilder()
+            .clientPublicKey("pk-test-your-public-key")
+            .environment(PayMayaEnvironment.SANDBOX)
+            .logLevel(LogLevel.ERROR)
+            .build()
+        
+        findViewById<Button>(R.id.btnLinkWallet).setOnClickListener {
+            startWalletLinking()
+        }
+    }
+    
+    private fun startWalletLinking() {
+        val request = CreateWalletLinkRequest(
+            requestReferenceNumber = "LINK-${System.currentTimeMillis()}",
+            redirectUrl = RedirectUrl(
+                success = "https://yourapp.com/success",
+                failure = "https://yourapp.com/failure",
+                cancel = "https://yourapp.com/cancel"
+            )
+        )
+        
+        payWithPayMayaClient.startCreateWalletLinkActivityForResult(this, request)
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        payWithPayMayaClient.onActivityResult(requestCode, resultCode, data)?.let { result ->
+            when (result) {
+                is CreateWalletLinkResult.Success -> {
+                    // Save linkId for future recurring charges
+                    val linkId = result.linkId
+                    Toast.makeText(this, "Wallet Linked: $linkId", Toast.LENGTH_LONG).show()
+                }
+                is CreateWalletLinkResult.Cancel -> {
+                    Toast.makeText(this, "Wallet Linking Canceled", Toast.LENGTH_SHORT).show()
+                }
+                is CreateWalletLinkResult.Failure -> {
+                    Toast.makeText(this, "Wallet Linking Failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+}
+```

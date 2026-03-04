@@ -1,0 +1,240 @@
+---
+title: CheckoutRequest
+description: Model with data required to initiate checkout payment
+---
+
+The `CheckoutRequest` class contains information about the buyer, the items inside the cart, transaction amount, status of payment and other details.
+
+## Properties
+
+<ParamField path="totalAmount" type="TotalAmount" required>
+  Transaction amount details including value, currency, and optional fee breakdown.
+</ParamField>
+
+<ParamField path="buyer" type="Buyer">
+  Details of the buyer including name, contact information, and addresses.
+</ParamField>
+
+<ParamField path="items" type="List<Item>" required>
+  List of items in the checkout cart.
+</ParamField>
+
+<ParamField path="requestReferenceNumber" type="String" required>
+  Reference number assigned by the merchant to identify a transaction.
+</ParamField>
+
+<ParamField path="redirectUrl" type="RedirectUrl" required>
+  Set of redirect URLs upon process completion (success, failure, cancel).
+</ParamField>
+
+<ParamField path="metadata" type="JSONObject">
+  Additional data about the specific checkout. This can be supplied during the checkout creation.
+</ParamField>
+
+<ParamField path="authorizationType" type="AuthorizationType">
+  The type of authorization for the payment. Can be `NORMAL`, `FINAL`, or `PREAUTHORIZATION`.
+</ParamField>
+
+## Related Classes
+
+### TotalAmount
+
+Contains information about transaction amount.
+
+<ParamField path="value" type="BigDecimal" required>
+  Payment amount to be charged.
+</ParamField>
+
+<ParamField path="currency" type="String" required>
+  Currency code (e.g., "PHP", "USD").
+</ParamField>
+
+<ParamField path="details" type="AmountDetails">
+  Breakdown of fees.
+</ParamField>
+
+### AmountDetails
+
+Optional breakdown of fees. If provided, it will reflect on the Checkout Page and will be viewed by the buyer for review.
+
+<ParamField path="discount" type="BigDecimal">
+  Discount amount.
+</ParamField>
+
+<ParamField path="serviceCharge" type="BigDecimal">
+  Service charge amount.
+</ParamField>
+
+<ParamField path="shippingFee" type="BigDecimal">
+  Shipping fee amount.
+</ParamField>
+
+<ParamField path="tax" type="BigDecimal">
+  Tax amount.
+</ParamField>
+
+<ParamField path="subtotal" type="BigDecimal">
+  Subtotal amount.
+</ParamField>
+
+### Item
+
+Represents an entity that can be purchased from a merchant's shop.
+
+<ParamField path="name" type="String" required>
+  Item's product name.
+</ParamField>
+
+<ParamField path="quantity" type="Int">
+  Item's quantity.
+</ParamField>
+
+<ParamField path="code" type="String">
+  Item's SKU code.
+</ParamField>
+
+<ParamField path="description" type="String">
+  Item's description.
+</ParamField>
+
+<ParamField path="amount" type="ItemAmount">
+  Item's unit price.
+</ParamField>
+
+<ParamField path="totalAmount" type="TotalAmount" required>
+  Item's total price.
+</ParamField>
+
+### ItemAmount
+
+Details about each item's amount.
+
+<ParamField path="value" type="BigDecimal" required>
+  Payment amount to be charged to the card.
+</ParamField>
+
+<ParamField path="details" type="AmountDetails">
+  Breakdown of fees.
+</ParamField>
+
+### Buyer
+
+Represents the entity that bought items from the merchant's shop. When provided, must have at least one populated field.
+
+<ParamField path="firstName" type="String">
+  First name of buyer.
+</ParamField>
+
+<ParamField path="middleName" type="String">
+  Middle name of buyer.
+</ParamField>
+
+<ParamField path="lastName" type="String">
+  Last name of buyer.
+</ParamField>
+
+<ParamField path="contact" type="Contact">
+  Contact details of buyer.
+</ParamField>
+
+<ParamField path="shippingAddress" type="Address">
+  Shipping address of buyer.
+</ParamField>
+
+<ParamField path="billingAddress" type="Address">
+  Billing address of buyer.
+</ParamField>
+
+### Contact
+
+Buyer's contact details. If the email field is provided, a payment receipt will be sent to the email address.
+
+<ParamField path="phone" type="String">
+  Phone number of the buyer.
+</ParamField>
+
+<ParamField path="email" type="String">
+  Valid email address of the buyer.
+</ParamField>
+
+### Address
+
+Address of the buyer.
+
+<ParamField path="line1" type="String">
+  Address line 1.
+</ParamField>
+
+<ParamField path="line2" type="String">
+  Address line 2.
+</ParamField>
+
+<ParamField path="city" type="String">
+  City.
+</ParamField>
+
+<ParamField path="state" type="String">
+  State/Province.
+</ParamField>
+
+<ParamField path="zipCode" type="String">
+  Zip code.
+</ParamField>
+
+<ParamField path="countryCode" type="String">
+  ISO 3166-2 country code.
+</ParamField>
+
+### RedirectUrl
+
+Redirect URL model defining URLs used to redirect to specific pages once the payment process is done.
+
+<ParamField path="success" type="String" required>
+  Success URL.
+</ParamField>
+
+<ParamField path="failure" type="String" required>
+  Failure URL.
+</ParamField>
+
+<ParamField path="cancel" type="String" required>
+  Cancel URL.
+</ParamField>
+
+## Example
+
+```kotlin
+val checkoutRequest = CheckoutRequest(
+    totalAmount = TotalAmount(
+        value = BigDecimal("100.00"),
+        currency = "PHP",
+        details = AmountDetails(
+            subtotal = BigDecimal("100.00")
+        )
+    ),
+    buyer = Buyer(
+        firstName = "Juan",
+        lastName = "Dela Cruz",
+        contact = Contact(
+            phone = "+639181234567",
+            email = "juan.delacruz@example.com"
+        )
+    ),
+    items = listOf(
+        Item(
+            name = "Sample Item",
+            quantity = 1,
+            totalAmount = TotalAmount(
+                value = BigDecimal("100.00"),
+                currency = "PHP"
+            )
+        )
+    ),
+    requestReferenceNumber = "REF-123456",
+    redirectUrl = RedirectUrl(
+        success = "https://example.com/success",
+        failure = "https://example.com/failure",
+        cancel = "https://example.com/cancel"
+    )
+)
+```

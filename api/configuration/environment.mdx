@@ -1,0 +1,68 @@
+---
+title: PayMayaEnvironment
+description: Environment configuration enum for the PayMaya Android SDK
+---
+
+## Overview
+
+The `PayMayaEnvironment` enum specifies which PayMaya environment your application should connect to. This is a required configuration for all SDK clients.
+
+## Definition
+
+```kotlin
+enum class PayMayaEnvironment {
+    SANDBOX,
+    PRODUCTION
+}
+```
+
+## Values
+
+### SANDBOX
+
+Use the sandbox environment for development and testing.
+
+**When to use:**
+- During development and integration
+- Testing payment flows without processing real transactions
+- QA and staging environments
+- Demo applications
+
+**Characteristics:**
+- No real money is processed
+- Requires sandbox API credentials
+- Safe for testing all payment scenarios
+
+### PRODUCTION
+
+Use the production environment for live applications processing real payments.
+
+**When to use:**
+- Production applications
+- Processing actual customer payments
+- Live payment transactions
+
+**Characteristics:**
+- Processes real money transactions
+- Requires production API credentials
+- Should only be used with proper security measures
+
+<Warning>
+Always use `SANDBOX` during development. Only switch to `PRODUCTION` when you're ready to process real payments and have obtained production credentials from PayMaya.
+</Warning>
+
+## Usage Example
+
+Set the environment when building a client:
+
+```kotlin
+val client = PayMayaCheckout.newBuilder()
+    .clientPublicKey("pk-test-xxx")
+    .environment(PayMayaEnvironment.SANDBOX)
+    .build()
+```
+
+## See Also
+
+- [Builder](/api/configuration/builder) - Configure SDK clients
+- [LogLevel](/api/configuration/log-level) - Configure logging

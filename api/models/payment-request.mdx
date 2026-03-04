@@ -1,0 +1,106 @@
+---
+title: SinglePaymentRequest
+description: Model with data required to initiate PayWithPayMaya single payment
+---
+
+The `SinglePaymentRequest` class contains the data required to initiate a single payment transaction using PayWithPayMaya.
+
+## Properties
+
+<ParamField path="totalAmount" type="TotalAmount" required>
+  Transaction amount details including value, currency, and optional fee breakdown.
+</ParamField>
+
+<ParamField path="requestReferenceNumber" type="String" required>
+  Reference number assigned by the merchant to identify a transaction.
+</ParamField>
+
+<ParamField path="redirectUrl" type="RedirectUrl" required>
+  Set of redirect URLs upon process completion (success, failure, cancel).
+</ParamField>
+
+<ParamField path="metadata" type="JSONObject">
+  Additional metadata about the payment transaction.
+</ParamField>
+
+## Related Classes
+
+### TotalAmount
+
+Contains information about transaction amount.
+
+<ParamField path="value" type="BigDecimal" required>
+  Payment amount to be charged.
+</ParamField>
+
+<ParamField path="currency" type="String" required>
+  Currency code (e.g., "PHP", "USD").
+</ParamField>
+
+<ParamField path="details" type="AmountDetails">
+  Breakdown of fees.
+</ParamField>
+
+### AmountDetails
+
+Optional breakdown of fees.
+
+<ParamField path="discount" type="BigDecimal">
+  Discount amount.
+</ParamField>
+
+<ParamField path="serviceCharge" type="BigDecimal">
+  Service charge amount.
+</ParamField>
+
+<ParamField path="shippingFee" type="BigDecimal">
+  Shipping fee amount.
+</ParamField>
+
+<ParamField path="tax" type="BigDecimal">
+  Tax amount.
+</ParamField>
+
+<ParamField path="subtotal" type="BigDecimal">
+  Subtotal amount.
+</ParamField>
+
+### RedirectUrl
+
+Redirect URL model defining URLs used to redirect to specific pages once the payment process is done.
+
+<ParamField path="success" type="String" required>
+  Success URL.
+</ParamField>
+
+<ParamField path="failure" type="String" required>
+  Failure URL.
+</ParamField>
+
+<ParamField path="cancel" type="String" required>
+  Cancel URL.
+</ParamField>
+
+## Example
+
+```kotlin
+val paymentRequest = SinglePaymentRequest(
+    totalAmount = TotalAmount(
+        value = BigDecimal("100.00"),
+        currency = "PHP",
+        details = AmountDetails(
+            subtotal = BigDecimal("100.00")
+        )
+    ),
+    requestReferenceNumber = "REF-123456",
+    redirectUrl = RedirectUrl(
+        success = "https://example.com/success",
+        failure = "https://example.com/failure",
+        cancel = "https://example.com/cancel"
+    ),
+    metadata = JSONObject().apply {
+        put("orderId", "ORDER-123")
+        put("customerId", "CUST-456")
+    }
+)
+```

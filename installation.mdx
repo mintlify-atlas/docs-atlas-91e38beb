@@ -1,0 +1,183 @@
+---
+title: Installation
+description: Add the PayMaya Android SDK v2 to your Android project using Gradle
+---
+
+The PayMaya Android SDK v2 is distributed through JitPack, making it easy to add to your Android project with Gradle.
+
+## Prerequisites
+
+Before installing the SDK, ensure you have:
+
+- Android Studio (latest stable version recommended)
+- An Android project with minimum SDK version 23 (Android 6.0)
+- A PayMaya account with API keys ([sign up here](https://developers.paymaya.com/))
+
+## Installation Steps
+
+<Steps>
+  <Step title="Add JitPack Repository">
+    Open your project's root `build.gradle` file and add the JitPack repository to the `allprojects` section:
+
+    ```groovy build.gradle
+    allprojects {
+        repositories {
+            google()
+            mavenCentral()
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
+
+    <Note>
+      If you're using newer Android projects with `settings.gradle`, add the repository there instead:
+
+      ```groovy settings.gradle
+      dependencyResolutionManagement {
+          repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+          repositories {
+              google()
+              mavenCentral()
+              maven { url 'https://jitpack.io' }
+          }
+      }
+      ```
+    </Note>
+  </Step>
+
+  <Step title="Add SDK Dependency">
+    Open your app module's `build.gradle` file and add the PayMaya SDK dependency:
+
+    ```groovy build.gradle (app module)
+    dependencies {
+        implementation 'com.github.paymaya:paymaya-android-sdk-v2:2.5.0'
+        
+        // Your other dependencies
+    }
+    ```
+
+    <Note>
+      Check [JitPack releases](https://jitpack.io/#paymaya/paymaya-android-sdk-v2) for the latest version number.
+    </Note>
+  </Step>
+
+  <Step title="Sync Gradle">
+    Click **Sync Now** in the banner that appears in Android Studio, or run:
+
+    ```bash
+    ./gradlew sync
+    ```
+  </Step>
+
+  <Step title="Verify Installation">
+    To verify the SDK is installed correctly, add an import statement in your Activity or Fragment:
+
+    ```kotlin
+    import com.paymaya.sdk.android.checkout.PayMayaCheckout
+    import com.paymaya.sdk.android.common.PayMayaEnvironment
+    ```
+
+    If the import resolves without errors, the installation was successful.
+  </Step>
+</Steps>
+
+## Version Tags
+
+The PayMaya Android SDK follows semantic versioning. Use the release tags from the GitHub repository:
+
+```groovy
+// Latest stable version
+implementation 'com.github.paymaya:paymaya-android-sdk-v2:2.5.0'
+
+// Specific version
+implementation 'com.github.paymaya:paymaya-android-sdk-v2:2.4.0'
+
+// Latest from a branch (not recommended for production)
+implementation 'com.github.paymaya:paymaya-android-sdk-v2:master-SNAPSHOT'
+```
+
+<Warning>
+  Always use a specific version tag in production. Avoid using `+` or `SNAPSHOT` versions as they may introduce breaking changes.
+</Warning>
+
+## JCenter Deprecation Notice
+
+<Note>
+  **Important**: JCenter support has been deprecated. Only versions 2.0.1 and below are available in JCenter as read-only.
+</Note>
+
+If you were previously using JCenter, migrate to JitPack:
+
+<CodeGroup>
+```groovy Old (JCenter - Deprecated)
+repositories {
+    jcenter()
+}
+
+dependencies {
+    implementation 'com.paymaya:paymaya-sdk-android:+'
+}
+```
+
+```groovy New (JitPack - Recommended)
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.paymaya:paymaya-android-sdk-v2:2.5.0'
+}
+```
+</CodeGroup>
+
+## ProGuard Configuration
+
+If you're using ProGuard or R8 for code obfuscation, the SDK is already configured with consumer ProGuard rules. No additional configuration is needed.
+
+## Troubleshooting
+
+### Gradle Sync Issues
+
+If you encounter Gradle sync errors:
+
+1. **Check your internet connection** - JitPack downloads dependencies from GitHub
+2. **Clear Gradle cache**:
+   ```bash
+   ./gradlew clean
+   rm -rf ~/.gradle/caches/
+   ```
+3. **Verify repository URL** - Ensure `https://jitpack.io` is correctly added
+4. **Check version tag** - Verify the version exists on [JitPack](https://jitpack.io/#paymaya/paymaya-android-sdk-v2)
+
+### Minimum SDK Version Conflict
+
+If you see a minimum SDK version error:
+
+```groovy build.gradle (app module)
+android {
+    defaultConfig {
+        minSdkVersion 23  // Must be 23 or higher
+        targetSdkVersion 33
+    }
+}
+```
+
+### Dependency Conflicts
+
+If you encounter dependency conflicts with other libraries:
+
+```groovy
+dependencies {
+    implementation('com.github.paymaya:paymaya-android-sdk-v2:2.5.0') {
+        exclude group: 'conflicting-group', module: 'conflicting-module'
+    }
+}
+```
+
+## Next Steps
+
+Now that you have the SDK installed, you're ready to integrate payments:
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Learn how to process your first payment
+</Card>
