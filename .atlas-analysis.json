@@ -1,0 +1,128 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "PayMaya Android SDK",
+  "projectDescription": "Android SDK for integrating PayMaya payment solutions including Checkout, Pay With PayMaya, and Payment Vault.",
+  "theme": "sequoia",
+  "primaryColor": "#9f9f9f",
+  "lightColor": "#343434",
+  "darkColor": "#d1d1d1",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Payment Methods",
+            "pages": [
+              "payment-methods/checkout",
+              "payment-methods/pay-with-paymaya",
+              "payment-methods/vault"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/environment-setup",
+              "guides/result-handling",
+              "guides/payment-status",
+              "guides/testing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Clients",
+            "pages": [
+              "api/paymaya-checkout",
+              "api/pay-with-paymaya",
+              "api/paymaya-vault"
+            ]
+          },
+          {
+            "group": "Models",
+            "pages": [
+              "api/models/checkout-request",
+              "api/models/payment-request",
+              "api/models/wallet-link-request",
+              "api/models/results"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "api/configuration/environment",
+              "api/configuration/log-level",
+              "api/configuration/builder"
+            ]
+          },
+          {
+            "group": "Exceptions",
+            "pages": [
+              "api/exceptions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Checkout payment flow with WebView",
+    "Pay With PayMaya single payment and wallet link creation",
+    "Payment Vault for card tokenization",
+    "Sandbox and production environment support",
+    "Payment status checking",
+    "Built-in error handling and exceptions"
+  ],
+  "publicApiSurface": [
+    "PayMayaCheckout.newBuilder()",
+    "PayMayaCheckout.startCheckoutActivityForResult()",
+    "PayMayaCheckout.onActivityResult()",
+    "PayMayaCheckout.checkPaymentStatus()",
+    "PayWithPayMaya.newBuilder()",
+    "PayWithPayMaya.startSinglePaymentActivityForResult()",
+    "PayWithPayMaya.startCreateWalletLinkActivityForResult()",
+    "PayWithPayMaya.onActivityResult()",
+    "PayWithPayMaya.checkPaymentStatus()",
+    "PayMayaVault.newBuilder()",
+    "PayMayaVault.startTokenizeCardActivityForResult()",
+    "PayMayaVault.onActivityResult()",
+    "Builder.clientPublicKey()",
+    "Builder.environment()",
+    "Builder.logLevel()",
+    "Builder.logo()",
+    "Builder.build()",
+    "CheckoutRequest",
+    "SinglePaymentRequest",
+    "CreateWalletLinkRequest",
+    "PayMayaCheckoutResult",
+    "PayWithPayMayaResult",
+    "PayMayaVaultResult",
+    "CheckPaymentStatusResult",
+    "PayMayaEnvironment.SANDBOX",
+    "PayMayaEnvironment.PRODUCTION",
+    "LogLevel",
+    "PaymentStatus",
+    "Address",
+    "Buyer",
+    "Contact",
+    "Item",
+    "ItemAmount",
+    "RedirectUrl",
+    "AuthorizationType",
+    "BadRequestException",
+    "HttpException",
+    "InternalException",
+    "PaymentFailedException"
+  ]
+}
